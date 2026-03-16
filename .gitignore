@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.db-journal
+
+# Build output
+dist/
+export/
+ui/dist/
+ui/export/
+
+# Logs
+data/logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Playwright
+test-results/
+playwright-report/
+
+# TypeScript
+*.tsbuildinfo
+
+# Next.js (if migrated later)
+.next/

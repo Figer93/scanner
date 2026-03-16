@@ -1,0 +1,35 @@
+# Dependencies and build artifacts (reinstalled/built in image)
+node_modules
+ui/node_modules
+dist
+ui/dist
+
+# Git and IDE
+.git
+.gitignore
+.cursor
+.vscode
+*.log
+
+# Local env and secrets
+.env
+.env.local
+.env.*.local
+
+# Data and logs (must be mounted or external in production)
+data
+*.db
+
+# Docs and dev-only (optional: remove if you want them in image)
+docs
+*.md
+!README.md
+
+# Tests and tooling (not needed in production image)
+coverage
+.nyc_output
+*.test.js
+*.spec.js
+__tests__
+.eslintrc*
+.prettierrc*
