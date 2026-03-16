@@ -4,6 +4,7 @@
 
 require('dotenv').config();
 const path = require('path');
+const fs = require('fs');
 const http = require('http');
 const express = require('express');
 const { Server: SocketServer } = require('socket.io');
@@ -117,12 +118,18 @@ app.use('/api/', apiLimiter);
 app.use(express.json());
 
 const distPath = path.join(__dirname, '..', 'dist');
+const indexHtml = path.join(distPath, 'index.html');
+if (!fs.existsSync(indexHtml)) {
+    logger.error({ distPath }, 'UI build missing: dist/index.html not found. Run "npm run build" before start (or use Dockerfile which runs it).');
+    process.exit(1);
+}
 app.use(express.static(distPath));
 
 mountAll(app, { startScheduledRuns });
 
-app.get(/^(?!\/api)/, (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
+// SPA fallback: serve index.html only for non-API, non-asset routes (avoids sending HTML for /assets/* when files are missing)
+app.get(/^(?!\/api)(?!\/assets)/, (req, res) => {
+    res.sendFile(indexHtml);
 });
 
 const EMAIL_QUEUE_INTERVAL_MS = 5 * 60 * 1000;

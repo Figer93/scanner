@@ -6,6 +6,10 @@
     "git": {
       "command": "node",
       "args": ["mcp/git-mcp/server.js"]
+    },
+    "railway": {
+      "command": "node",
+      "args": ["mcp/railway-mcp/server.js"]
     }
   }
 }
