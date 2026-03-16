@@ -1,0 +1,48 @@
+.status-badge {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  border-radius: 9999px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.status-badge--new {
+  background: rgba(59, 130, 246, 0.25);
+  color: #60A5FA;
+}
+
+.status-badge--enriched {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34D399;
+}
+
+.status-badge--contacted,
+.status-badge--pending {
+  background: rgba(245, 158, 11, 0.25);
+  color: #FBBF24;
+}
+
+.status-badge--opened {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93C5FD;
+}
+
+.status-badge--waiting {
+  background: rgba(245, 158, 11, 0.2);
+  color: #FCD34D;
+}
+
+.status-badge--qualified {
+  background: rgba(139, 92, 246, 0.25);
+  color: #A78BFA;
+}
+
+.status-badge--converted {
+  background: rgba(13, 148, 136, 0.25);
+  color: #2DD4BF;
+}
+
+.status-badge--unknown {
+  background: rgba(148, 163, 184, 0.2);
+  color: var(--text-muted);
+}

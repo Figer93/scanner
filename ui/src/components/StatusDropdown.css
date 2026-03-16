@@ -1,0 +1,60 @@
+.status-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.status-dropdown__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+
+.status-dropdown__trigger:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border);
+}
+
+.status-dropdown__trigger:disabled {
+  cursor: default;
+}
+
+.status-dropdown__chevron {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+}
+
+.status-dropdown__popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  min-width: 100%;
+  padding: 0.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+}
+
+.status-dropdown__option {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.status-dropdown__option:hover {
+  background: rgba(255, 255, 255, 0.06);
+}

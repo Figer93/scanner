@@ -1,0 +1,93 @@
+/*
+ * Hyper-Glass Command Center — Design Tokens
+ *
+ * Single source of truth for all visual values.
+ * Components and Tailwind config reference these via var(--token).
+ * Never use raw hex in component code — always reference a token.
+ */
+
+:root {
+  /* ── Backgrounds ─────────────────────────────────────────── */
+  --color-bg-base: #0a0e1b;
+  --color-bg-elevated: rgba(255, 255, 255, 0.08);
+  --color-bg-subtle: rgba(255, 255, 255, 0.04);
+  --color-bg-hover: rgba(255, 255, 255, 0.12);
+  --color-bg-surface: #1a1d27;
+  --color-bg-card: #21253a;
+
+  /* ── Borders ─────────────────────────────────────────────── */
+  --color-border: rgba(255, 255, 255, 0.10);
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-active: rgba(124, 58, 237, 0.60);
+
+  /* ── Accent ──────────────────────────────────────────────── */
+  --color-accent-primary: #7C3AED;
+  --color-accent-secondary: #4F46E5;
+  --color-accent-glow: rgba(124, 58, 237, 0.35);
+
+  /* ── Text ────────────────────────────────────────────────── */
+  --color-text-primary: rgba(255, 255, 255, 0.95);
+  --color-text-secondary: rgba(255, 255, 255, 0.55);
+  --color-text-muted: rgba(255, 255, 255, 0.30);
+  --color-text-heading: #f1f5f9;
+
+  /* ── Semantic ────────────────────────────────────────────── */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #3B82F6;
+
+  /* ── Radii ───────────────────────────────────────────────── */
+  --radius-card: 1.5rem;
+  --radius-inner: 0.75rem;
+  --radius-sm: 0.375rem;
+  --radius-full: 9999px;
+
+  /* ── Shadows ─────────────────────────────────────────────── */
+  --shadow-glow: 0 0 30px rgba(124, 58, 237, 0.25);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.40);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.20);
+
+  /* ── Transitions ─────────────────────────────────────────── */
+  --transition-base: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Typography ──────────────────────────────────────────── */
+  --font-sans: 'Geist Sans', 'Geist', 'Inter', sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Spacing (reference only — use Tailwind utilities) ──── */
+  --space-card-padding: 1.5rem;
+  --space-section-gap: 1.5rem;
+  --space-bento-gap: 1rem;
+
+  /* ── Z-index scale ───────────────────────────────────────── */
+  --z-dropdown: 50;
+  --z-sticky: 100;
+  --z-drawer: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+}
+
+/* Noise texture overlay for premium depth */
+#root::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  z-index: 0;
+}
+
+/* Reduced motion: disable all transitions and animations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
