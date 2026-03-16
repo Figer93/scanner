@@ -21,12 +21,7 @@ const { initServerContext, persistAndEmitLog } = require('./serverContext');
 const { mountAll } = require('./routes');
 
 const ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://localhost:3001',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:3001',
-    'http://[::1]:5173',
-    'http://[::1]:3001',
+    'https://scanner-production-3048.up.railway.app',
     ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : []),
 ];
 
