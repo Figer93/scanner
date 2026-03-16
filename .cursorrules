@@ -371,19 +371,47 @@ side effects, dependency injection via props/hooks.
 4. **Build bottom-up.** Primitives first, then composed components, then
    the page.
 
-5. **Pre-ship checklist — run mentally before every response:**
-   - [ ] Any `any` type? → Fix it.
-   - [ ] Missing loading state? → Add it.
-   - [ ] Missing error state? → Add it.
-   - [ ] Missing empty state? → Add it.
-   - [ ] Keyboard navigable? → Verify it.
-   - [ ] Colour contrast sufficient? → Check it.
-   - [ ] Full-width card that should be split into bento? → Split it.
-   - [ ] Raw `console.log`? → Remove it.
-   - [ ] `useEffect` with missing or wrong deps? → Fix it.
-   - [ ] Does it look like a $99/mo product? → If not, rework it.
-
-6. **Deliver directly.** Clean, copy-pasteable code. No narration of what
-   you did. Include short inline comments only where a decision is
-   non-obvious. If you made a significant architectural decision, add a
-   single `// NOTE:` comment explaining the tradeoff.
++5. **Pre-ship checklist — run mentally before every response:**
++   - [ ] Any `any` type? → Fix it.
++   - [ ] Missing loading state? → Add it.
++   - [ ] Missing error state? → Add it.
++   - [ ] Missing empty state? → Add it.
++   - [ ] Keyboard navigable? → Verify it.
++   - [ ] Colour contrast sufficient? → Check it.
++   - [ ] Full-width card that should be split into bento? → Split it.
++   - [ ] Raw `console.log`? → Remove it.
++   - [ ] `useEffect` with missing or wrong deps? → Fix it.
++   - [ ] Does it look like a $99/mo product? → If not, rework it.
++
++6. **Deliver directly.** Clean, copy-pasteable code. No narration of what
++   you did. Include short inline comments only where a decision is
++   non-obvious. If you made a significant architectural decision, add a
++   single `// NOTE:` comment explaining the tradeoff.
++
++---
++
++## 11. PROJECT-SPECIFIC RULES (CHSCANNER)
++
++- **Cloud stack assumptions**
++  - Always assume the backend runs on **Railway** using the repo `Dockerfile`.
++  - Always assume the database is **Supabase PostgreSQL**, reached via `DATABASE_URL`. Do not introduce or use any other database unless the user explicitly asks.
++  - Assume the production frontend is the Railway-hosted UI at the project’s primary domain.
++
++- **Docs must track behaviour**
++  - Whenever you change behaviour that affects deployment, env vars, database schema, or core flows, you must also update the relevant docs in the same change:
++    - `README.md` for top-level setup/usage.
++    - `docs/SUPABASE_SETUP.md` for any DB or schema change.
++    - `docs/DEPLOYMENT.md` and `docs/RAILWAY_MONITORING.md` for anything related to Railway, Dockerfile usage, health checks, or env vars.
++    - Any feature-specific doc in `docs/` that is clearly related to the change.
++
++- **Committing and pushing**
++  - When the user says anything equivalent to **“push this”, “you can push all this”, or “commit these changes”**, you should:
++    - Stage only the relevant files.
++    - Create a commit using Conventional Commits (`feat:`, `fix:`, `docs:`, etc.) with a message that focuses on the *why*.
++    - Run `git push` to the current branch without asking for additional confirmation.
++
++- **Environment expectations**
++  - Treat `DATABASE_URL` as pointing to Supabase in all non-test environments.
++  - Prefer adding new configuration via env vars and documenting them, rather than hardcoding values.
++  - Keep Railway and Supabase configuration in sync with code changes; if new env vars are required, document them and, where possible, wire helper scripts (Railway MCP or scripts in `scripts/`) to manage them.
+ 
