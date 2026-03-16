@@ -8,7 +8,7 @@ RUN npm ci
 
 # Install UI dependencies
 COPY ui/package.json ui/package-lock.json* ./ui/
-RUN cd ui && npm ci
+RUN cd ui && npm install --legacy-peer-deps
 
 # Copy application source
 COPY scripts ./scripts
