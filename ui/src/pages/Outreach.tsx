@@ -103,7 +103,7 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
     const [previewLoading, setPreviewLoading] = useState(false);
     const [testEmail, setTestEmail] = useState('');
 
-    const [activeTab, setActiveTab] = useState<'templates' | 'sent' | 'sequences' | 'conversations'>('templates');
+    const [activeTab, setActiveTab] = useState<'templates' | 'sent' | 'sequences' | 'conversations'>('conversations');
     const [conversationLeadId, setConversationLeadId] = useState<string>('');
     const [newSequenceName, setNewSequenceName] = useState('');
     const [newSequenceModalOpen, setNewSequenceModalOpen] = useState(false);
@@ -283,6 +283,14 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
             <nav className="flex gap-2 border-b border-white/10 pb-2" aria-label="Outreach sections">
                 <button
                     type="button"
+                    onClick={() => setActiveTab('conversations')}
+                    className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-[var(--transition-base)] focus-visible:ring-2 ring-violet-500 ring-offset-2 ring-offset-transparent ${activeTab === 'conversations' ? 'bg-white/12 text-white border border-white/10 border-b-0' : 'text-white/60 hover:text-white/80 hover:bg-white/5'}`}
+                    aria-current={activeTab === 'conversations' ? 'true' : undefined}
+                >
+                    <MessageCircle size={16} className="inline-block mr-1.5 align-middle" aria-hidden="true" />Conversations
+                </button>
+                <button
+                    type="button"
                     onClick={() => setActiveTab('templates')}
                     className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-[var(--transition-base)] focus-visible:ring-2 ring-violet-500 ring-offset-2 ring-offset-transparent ${activeTab === 'templates' ? 'bg-white/12 text-white border border-white/10 border-b-0' : 'text-white/60 hover:text-white/80 hover:bg-white/5'}`}
                     aria-current={activeTab === 'templates' ? 'true' : undefined}
@@ -304,14 +312,6 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                     aria-current={activeTab === 'sequences' ? 'true' : undefined}
                 >
                     <ListOrdered size={16} className="inline-block mr-1.5 align-middle" aria-hidden="true" />Sequences
-                </button>
-                <button
-                    type="button"
-                    onClick={() => setActiveTab('conversations')}
-                    className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-[var(--transition-base)] focus-visible:ring-2 ring-violet-500 ring-offset-2 ring-offset-transparent ${activeTab === 'conversations' ? 'bg-white/12 text-white border border-white/10 border-b-0' : 'text-white/60 hover:text-white/80 hover:bg-white/5'}`}
-                    aria-current={activeTab === 'conversations' ? 'true' : undefined}
-                >
-                    <MessageCircle size={16} className="inline-block mr-1.5 align-middle" aria-hidden="true" />Conversations
                 </button>
             </nav>
 
@@ -469,62 +469,110 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                 const leadsWithEmail = leads.filter(hasValidEmail);
                 const preselectedId = conversationLeadId ? parseInt(conversationLeadId, 10) : null;
                 const preselectedLead = preselectedId != null && !Number.isNaN(preselectedId) ? leads.find((l) => l.id === preselectedId) : null;
-                const optionsIncludePreselected = preselectedLead && !leadsWithEmail.some((l) => l.id === preselectedLead.id);
-                const dropdownLeads = optionsIncludePreselected ? [preselectedLead, ...leadsWithEmail] : leadsWithEmail;
+                const sidebarLeads =
+                    preselectedLead && !leadsWithEmail.some((l) => l.id === preselectedLead.id)
+                        ? [preselectedLead, ...leadsWithEmail]
+                        : leadsWithEmail;
+
+                const handleSelectLead = (leadId: number) => {
+                    setConversationLeadId(String(leadId));
+                };
+
+                const selectedId = conversationLeadId ? parseInt(conversationLeadId, 10) : null;
+                const selectedLead = selectedId != null && !Number.isNaN(selectedId) ? leads.find((l) => l.id === selectedId) : null;
+                const selectedEmail = selectedLead?.emails?.[0];
+                const selectedEmailValid =
+                    selectedEmail && typeof selectedEmail === 'string' && !['not found', 'unknown'].includes(selectedEmail.trim().toLowerCase());
+
                 return (
-            <div className="space-y-4">
-                <GlassCard className="p-6">
-                    <h2 className="text-lg font-semibold text-white flex items-center gap-2 mb-4">
-                        <MessageCircle size={18} className="text-white/50" aria-hidden="true" />Email conversation
-                    </h2>
-                    <p className="text-sm text-[var(--color-text-secondary)] mb-4">
-                        Select a lead with a contact email to view the thread and send replies.
-                    </p>
-                    <label htmlFor="outreach-conversation-lead" className="block text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">
-                        Lead
-                    </label>
-                    <Select
-                        id="outreach-conversation-lead"
-                        value={conversationLeadId}
-                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setConversationLeadId(e.target.value)}
-                        aria-label="Select lead to view email conversation"
-                        className="max-w-md"
-                    >
-                        <option value="">— Select lead —</option>
-                        {dropdownLeads.map((l) => (
-                            <option key={l.id} value={String(l.id)}>
-                                {l.company_name || `Lead #${l.id}`}
-                                {hasValidEmail(l) ? ` — ${l.emails?.[0]}` : ' (no contact email — add on company page)'}
-                            </option>
-                        ))}
-                    </Select>
-                </GlassCard>
-                {conversationLeadId && (() => {
-                    const leadId = parseInt(conversationLeadId, 10);
-                    const lead = leads.find((l) => l.id === leadId);
-                    const leadEmail = lead?.emails?.[0];
-                    const validEmail = leadEmail && typeof leadEmail === 'string' && !['not found', 'unknown'].includes(leadEmail.trim().toLowerCase());
-                    if (Number.isNaN(leadId) || !lead) return null;
-                    if (!validEmail) {
-                        return (
-                            <GlassCard className="p-6">
-                                <p className="text-sm text-[var(--color-text-secondary)]">
-                                    This lead has no contact email. Add it on the company page (Add contact), then you can send emails here.
-                                </p>
-                            </GlassCard>
-                        );
-                    }
-                    const trimmed = (leadEmail as string).trim();
-                    return (
-                        <LeadEmailConversation
-                            key={leadId}
-                            leadId={leadId}
-                            leadEmail={trimmed}
-                            onSent={() => { void queryClient.invalidateQueries({ queryKey: ['email-logs'] }); }}
-                        />
-                    );
-                })()}
-            </div>
+                    <GlassCard className="p-0 overflow-hidden">
+                        <div className="flex h-[min(72vh,34rem)]">
+                            <aside className="w-72 border-r border-white/10 bg-white/5 flex flex-col">
+                                <div className="px-4 py-3 border-b border-white/10">
+                                    <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                                        <MessageCircle size={16} className="text-white/60" aria-hidden="true" />
+                                        Inbox
+                                    </h2>
+                                    <p className="mt-1 text-xs text-white/50">
+                                        Pick a lead to open the email thread.
+                                    </p>
+                                </div>
+                                <div className="flex-1 overflow-y-auto">
+                                    {sidebarLeads.length === 0 ? (
+                                        <p className="px-4 py-6 text-sm text-white/50">
+                                            No leads with contact emails yet.
+                                        </p>
+                                    ) : (
+                                        <ul className="py-1">
+                                            {sidebarLeads.map((lead) => {
+                                                if (!lead) return null;
+                                                const email = lead.emails?.[0];
+                                                const label = lead.company_name || `Lead #${lead.id}`;
+                                                const isActive = lead.id === selectedId;
+                                                return (
+                                                    <li key={lead.id}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSelectLead(lead.id)}
+                                                            className={`w-full text-left px-4 py-2.5 text-sm transition-[var(--transition-base)] flex flex-col gap-0.5 ${
+                                                                isActive ? 'bg-violet-500/25 text-white' : 'text-white/80 hover:bg-white/5'
+                                                            }`}
+                                                        >
+                                                            <span className="font-medium truncate">{label}</span>
+                                                            {email && (
+                                                                <span className="text-xs text-white/60 truncate">{email}</span>
+                                                            )}
+                                                        </button>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    )}
+                                </div>
+                            </aside>
+                            <section className="flex-1 flex flex-col bg-slate-950/60">
+                                {!selectedLead ? (
+                                    <div className="flex-1 flex items-center justify-center px-6">
+                                        <div className="text-center max-w-sm">
+                                            <p className="text-sm text-white/60">
+                                                Select a lead from the left to start viewing and replying to emails.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : !selectedEmailValid ? (
+                                    <div className="flex-1 flex items-center justify-center px-6">
+                                        <div className="text-center max-w-sm">
+                                            <p className="text-sm text-white/60">
+                                                This lead does not have a valid contact email. Add one on the company page, then come back here to continue the
+                                                conversation.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex-1 flex flex-col">
+                                        <header className="px-5 py-3 border-b border-white/10 flex items-center justify-between gap-3">
+                                            <div>
+                                                <h3 className="text-sm font-semibold text-white">
+                                                    {selectedLead.company_name || `Lead #${selectedLead.id}`}
+                                                </h3>
+                                                <p className="text-xs text-white/60 truncate">{(selectedEmail as string).trim()}</p>
+                                            </div>
+                                        </header>
+                                        <div className="flex-1 min-h-0">
+                                            <LeadEmailConversation
+                                                key={selectedLead.id}
+                                                leadId={selectedLead.id}
+                                                leadEmail={(selectedEmail as string).trim()}
+                                                onSent={() => {
+                                                    void queryClient.invalidateQueries({ queryKey: ['email-logs'] });
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </section>
+                        </div>
+                    </GlassCard>
                 );
             })()}
 
