@@ -2,16 +2,12 @@
  * POST /api/run — trigger the lead enrichment pipeline.
  */
 
-const { getDb, setProfileKey, getScoreDistribution, DEFAULT_DB_PATH } = require('../../services/database');
+const { getDb, setProfileKey, getScoreDistribution } = require('../../services/database');
 const { runPipeline } = require('../../index');
 const { persistAndEmitLog } = require('../../serverContext');
 const { validate } = require('../../middleware/validate');
 const logger = require('../../lib/logger');
 const { pipelineRunSchema } = require('../../schemas/leads');
-
-function resolveDbPath() {
-    return process.env.DB_PATH || DEFAULT_DB_PATH;
-}
 
 function mountLeadsPipeline(app) {
     app.post('/api/run', validate(pipelineRunSchema), async (req, res) => {
@@ -27,7 +23,7 @@ function mountLeadsPipeline(app) {
                 daysBack,
                 onProgress: (message) => persistAndEmitLog(message),
             });
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const lastRun = {
                 at: new Date().toISOString(),
                 source,

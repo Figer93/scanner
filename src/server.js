@@ -14,7 +14,7 @@ const rateLimit = require('express-rate-limit');
 
 const config = require('./config');
 const logger = require('./lib/logger');
-const { getDb, initSchema, getProfile, DEFAULT_DB_PATH } = require('./services/database');
+const { getDb, initSchema, getProfile } = require('./services/database');
 const { runPipeline } = require('./index');
 const { runQueue } = require('./services/emailQueue');
 const { initServerContext, persistAndEmitLog } = require('./serverContext');
@@ -30,10 +30,6 @@ const DEFAULT_SCHEDULED_RUN_LIMIT = 20;
 
 let scheduledTask = null;
 
-function resolveDbPath() {
-    return config.DB_PATH || process.env.DB_PATH || DEFAULT_DB_PATH;
-}
-
 async function startScheduledRuns() {
     if (scheduledTask) {
         scheduledTask.stop();
@@ -41,7 +37,7 @@ async function startScheduledRuns() {
     }
     let cronExpr = '';
     try {
-        const db = await getDb(resolveDbPath());
+        const db = await getDb();
         const profile = await getProfile(db);
         cronExpr = (profile.scheduled_run_cron || process.env.CRON_SCHEDULE || '').trim();
     } catch (err) {
@@ -50,7 +46,7 @@ async function startScheduledRuns() {
     if (!cronExpr || !cron.validate(cronExpr)) return;
     scheduledTask = cron.schedule(cronExpr, async () => {
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const profile = await getProfile(db);
             const runSource = profile.scheduled_run_source || process.env.SCHEDULED_RUN_SOURCE || 'companies_house';
             const runLimit = Math.min(
@@ -73,7 +69,7 @@ async function startScheduledRuns() {
 }
 
 async function ensureDb() {
-    const db = await getDb(resolveDbPath());
+    const db = await getDb();
     initSchema(db);
 }
 
@@ -132,14 +128,14 @@ const EMAIL_QUEUE_INTERVAL_MS = 5 * 60 * 1000;
 server.listen(config.PORT, async () => {
     logger.info({ port: config.PORT }, 'Server running');
     try {
-        const db = await getDb(resolveDbPath());
+        const db = await getDb();
         initSchema(db);
         await startScheduledRuns();
         setInterval(() => {
-            runQueue(resolveDbPath()).catch((err) => logger.error({ err: err.message }, 'Email queue run failed'));
+            runQueue().catch((err) => logger.error({ err: err.message }, 'Email queue run failed'));
         }, EMAIL_QUEUE_INTERVAL_MS);
         setTimeout(() => {
-            runQueue(resolveDbPath()).catch((err) => logger.error({ err: err.message }, 'Email queue first run failed'));
+            runQueue().catch((err) => logger.error({ err: err.message }, 'Email queue first run failed'));
         }, 10 * 1000);
     } catch (err) {
         logger.error({ err }, 'Post-startup init failed');

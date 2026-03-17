@@ -19,7 +19,7 @@ const {
     getLeadActivities, addLeadActivity,
     getProfile, addEmailLog,
     deleteLeadsByIds, getListsByCompanyNumbers,
-    STATUS, DEFAULT_DB_PATH,
+    STATUS,
 } = require('../../services/database');
 const { getResolvedKeys } = require('../../services/usageTracker');
 const { validateLead } = require('../../services/leadValidator');
@@ -42,16 +42,12 @@ const {
     validateLeadSchema,
 } = require('../../schemas/leads');
 
-function resolveDbPath() {
-    return process.env.DB_PATH || DEFAULT_DB_PATH;
-}
-
 function mountLeadsCrud(app) {
     // ── List / lookup (static paths — must precede /:id) ─────
 
     app.get('/api/leads', validateQuery(leadsQuerySchema), async (req, res) => {
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const leads = await getLeads(db, { listId: req.query.listId });
             res.json(leads);
         } catch (err) {
@@ -62,7 +58,7 @@ function mountLeadsCrud(app) {
 
     app.get('/api/leads/by-company/:companyNumber', validateParams(companyNumberParamsSchema), async (req, res) => {
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const lead = await getLeadByCompanyNumber(db, req.params.companyNumber);
             if (!lead) return res.status(404).json({ error: 'No lead found for this company' });
             res.json(lead);
@@ -74,7 +70,7 @@ function mountLeadsCrud(app) {
 
     app.get('/api/leads/in-lists', async (req, res) => {
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const raw = req.query.companyNumbers;
             const companyNumbers = typeof raw === 'string'
@@ -89,7 +85,7 @@ function mountLeadsCrud(app) {
 
     app.get('/api/leads/enriched', validateQuery(enrichedSearchQuerySchema), async (req, res) => {
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const q = req.query.q || '';
             const limit = Math.min(500, parseInt(req.query.limit, 10) || 100);
@@ -110,7 +106,7 @@ function mountLeadsCrud(app) {
     app.post('/api/leads/save-to-list', validate(saveToListSchema), async (req, res) => {
         const { listId, companyNumbers } = req.body;
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const list = await getListById(db, listId);
             if (!list) return res.status(404).json({ error: 'List not found' });
@@ -125,7 +121,7 @@ function mountLeadsCrud(app) {
     app.post('/api/leads/bulk-send-email', validate(bulkSendEmailSchema), async (req, res) => {
         const { leadIds, subject } = req.body;
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             let updated = 0;
             for (const id of leadIds) {
                 const lead = await getLeadById(db, id);
@@ -144,7 +140,7 @@ function mountLeadsCrud(app) {
 
     app.post('/api/leads/bulk-delete', validate(bulkDeleteSchema), async (req, res) => {
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const deleted = await deleteLeadsByIds(db, req.body.ids);
             res.json({ ok: true, deleted });
         } catch (err) {
@@ -155,7 +151,7 @@ function mountLeadsCrud(app) {
 
     app.post('/api/leads/validate', validate(validateLeadSchema), async (req, res) => {
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const lead = req.body;
             const apiKeys = getResolvedKeys(db);
@@ -173,7 +169,7 @@ function mountLeadsCrud(app) {
 
     app.get('/api/leads/:id', validateParams(leadIdParamsSchema), async (req, res) => {
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const lead = await getLeadById(db, req.params.id);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });
             res.json(lead);
@@ -197,7 +193,7 @@ function mountLeadsCrud(app) {
         if (req.body.emails !== undefined) updates.emails = req.body.emails;
         if (req.body.phones !== undefined) updates.phones = req.body.phones;
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             if (updates.status) {
                 const lead = await getLeadById(db, id);
                 if (lead) await addLeadActivity(db, id, 'status_change', `Status changed to ${updates.status}`);
@@ -218,7 +214,7 @@ function mountLeadsCrud(app) {
 
     app.get('/api/leads/:id/activities', validateParams(leadIdParamsSchema), async (req, res) => {
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             res.json(await getLeadActivities(db, req.params.id));
         } catch (err) {
             logger.error({ err }, 'Failed to get activities');
@@ -230,7 +226,7 @@ function mountLeadsCrud(app) {
         const { id } = req.params;
         const { type, content } = req.body;
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const lead = await getLeadById(db, id);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });
             const activityId = await addLeadActivity(db, id, type, content);
@@ -245,7 +241,7 @@ function mountLeadsCrud(app) {
         const { id } = req.params;
         const subject = (req.body.subject || '').trim() || 'Introduction';
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const lead = await getLeadById(db, id);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });
             const to = Array.isArray(lead.emails) && lead.emails[0]
@@ -266,7 +262,7 @@ function mountLeadsCrud(app) {
         const subject = (req.body.subject || '').trim();
         const body = (req.body.body || '').trim();
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const lead = await getLeadById(db, id);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });

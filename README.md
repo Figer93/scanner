@@ -1,6 +1,6 @@
 # CHScanner
 
-**Automated UK business lead enrichment and outreach.** Load companies from JSON, Companies House, or Google Maps → find websites (Serper) → scrape contacts (Playwright) → score and draft outreach with Google AI (Gemini) → store in Supabase PostgreSQL. Web UI for Find leads, Kanban, Profile, Analytics, and CRM push.
+**Automated UK business lead enrichment and outreach.** Load companies from Companies House / Google Maps / LinkedIn → find websites (Serper) → scrape contacts (Playwright) → score + draft outreach (Google AI) → store in **Supabase Postgres**. Deployed on **Railway**.
 
 **Target users:** Web agencies, SEO/marketing firms, and SaaS providers targeting newly registered UK companies.
 
@@ -9,12 +9,10 @@
 ## Table of contents
 
 - [Features](#features)
-- [Quick start](#quick-start)
+- [Railway deployment (primary)](#railway-deployment-primary)
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
-- [Installation & configuration](#installation--configuration)
-- [Usage](#usage)
-- [Documentation](#documentation)
+- [Local development (optional)](#local-development-optional)
 - [Database schema](#database-schema)
 - [Profile & API key management](#profile--api-key-management)
 - [Companies House integration](#companies-house-integration)
@@ -24,8 +22,6 @@
 - [CRM push](#crm-push)
 - [Team members & assign lead](#team-members--assign-lead)
 - [Cost per lead](#cost-per-lead)
-- [Troubleshooting](#troubleshooting)
-- [Resilience](#resilience)
 - [License & support](#license--support)
 
 ---
@@ -42,39 +38,28 @@
 
 ---
 
-## Quick start
+## Railway deployment (primary)
 
-1. **Clone and install**
+CHScanner is intended to run **fully in Railway + Supabase** (no local DB).
 
-   ```bash
-   npm install
-   cd ui && npm install && cd ..
-   ```
+- **Deploy**
+  - Railway builds the app (UI + backend) and runs `node src/server.js`.
+  - Ensure your Railway service has the required environment variables below.
 
-2. **Environment**
+- **Required environment variables**
+  - `DATABASE_URL` (**Supabase Postgres** connection string)
+  - `NODE_ENV=production` (recommended)
+  - `PORT` (Railway sets this; the app defaults to `3001`)
 
-   Copy `.env.example` to `.env` and set **`DATABASE_URL`** (Supabase PostgreSQL connection string) and at least **`SERPER_API_KEY`**:
+- **Recommended / feature-specific variables (or set via Profile UI)**
+  - `SERPER_API_KEY` (website discovery)
+  - `COMPANIES_HOUSE_API_KEY` (Companies House live fetch + cache sync)
+  - `GOOGLE_PLACES_API_KEY` (Google Maps source)
+  - `GOOGLE_AI_API_KEY` (scoring, ice-breakers, drafts)
+  - `APIFY_API_TOKEN` (LinkedIn source via Apify)
+  - Webhooks / email: `BREVO_WEBHOOK_SECRET`, `BREVO_API_KEY`, `MAILGUN_*`
 
-   ```bash
-   cp .env.example .env
-   ```
-
-   Get `DATABASE_URL` from Supabase: Project Settings → Database → Connection string (URI). The schema is applied via Supabase migrations (see `db/migrations/001_init.sql` or apply via Supabase MCP/dashboard).
-
-3. **Run**
-
-   ```bash
-   npm run dev
-   ```
-
-   Open **http://localhost:5173** in your browser. The backend runs on port 3001; Vite proxies `/api` and Socket.IO to it. **Use 5173 for the current UI** — if you open 3001 you see the last built static bundle (may be outdated).
-
-   **Smart Scoring (Phase 3B)** — where to find it:
-   - **Minimum score filter:** Find leads → left sidebar → **Minimum score** (slider 1–10, “Score ≥ X” and matching count). Section is expanded by default.
-   - **Score breakdown:** Open a company that has a lead (in a list) → **Score** button in the action bar → after scoring, expand **Score breakdown** in the Company card.
-   - **Queue by score:** DB Management → **Send queue** → “Last 5 scheduled sends” table includes a **Score** column; queue sends higher-scored leads first.
-
-For production: `npm run build` then `npm start` — see [Installation & configuration](#installation--configuration) and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Most secrets can also be set from the **Profile** page and are stored in the database (no redeploy needed for changes).
 
 ---
 
@@ -89,8 +74,6 @@ For production: `npm run build` then `npm start` — see [Installation & configu
 | APIs               | Companies House, Google Places, Serper, Google AI (Gemini)                 |
 | Frontend           | React, Vite (in `ui/`)                                                     |
 
-For architecture and data flow, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
 ---
 
 ## Project structure
@@ -100,74 +83,22 @@ CHScanner/
 ├── src/                 # Backend: server, pipeline, routes, services
 ├── ui/                  # Frontend: React + Vite (pages, components, api, hooks)
 ├── scripts/             # Build and sync (copy-ui-dist, copy-export-html, sync-companies-house)
-├── docs/                # Architecture, API, deployment, scripts, contributing
 ├── data/logs/           # Runtime logs (created on first write)
 ├── dist/                # Production UI build (after npm run build)
 ├── .env.example         # Example environment variables
 ├── README.md            # This file
-├── ROADMAP.md           # Feature backlog
-└── TROUBLESHOOTING.md   # Common errors and fixes
 ```
 
-Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
 ---
 
-## Installation & configuration
+## Local development (optional)
 
-1. **Install dependencies**
+Only needed if you want to run it on your machine against Supabase:
 
-   ```bash
-   npm install
-   cd ui && npm install && cd ..
-   ```
-
-2. **Environment**
-
-   Copy `.env.example` to `.env` and set your keys:
-
-   ```env
-   DATABASE_URL=postgresql://...   # required — Supabase connection string (Project Settings → Database)
-   SERPER_API_KEY=your_key_here
-   COMPANIES_HOUSE_API_KEY=your_key_here    # optional — CH live fetch
-   GOOGLE_PLACES_API_KEY=your_key_here      # optional — Google Maps source
-   GOOGLE_AI_API_KEY=your_key_here          # optional — scoring, ice-breakers, drafts (get at aistudio.google.com)
-   ```
-
-   Keys set in the **Profile** page of the UI are stored in the database and override `.env` at runtime (no restart needed).
-
-3. **Lead sources (choose one per run)**
-
-   - **JSON file** *(default):* `manchester_leads_month.json` — array of objects with `name`, `number`, `address`, `postcode`.
-   - **Companies House API:** Newly incorporated UK companies. Requires `COMPANIES_HOUSE_API_KEY`. See [Companies House integration](#companies-house-integration).
-   - **Google Maps (Places):** Search by keyword + location. Requires `GOOGLE_PLACES_API_KEY`. See [Google Maps (Places) source](#google-maps-places-source).
-
-For production deployment and env reference, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
----
-
-## Usage
-
-- **Production (single server):** `npm run build` then `npm start`. Open http://localhost:3001. UI is served from `dist/`.
-- **Development (live reload):** `npm run dev`. Backend on 3001, Vite on 5173. Open **http://localhost:5173**; edits hot-reload.
-- **CLI pipeline:** `node src/index.js 50` or `node src/index.js --limit=50 --source=companies_house` (see [docs/API.md](docs/API.md) for pipeline options).
-- **Export single-file UI:** `npm run export:html` → `export/chscanner.html` (backend still required for API/Socket.IO).
-
-Output is stored in Supabase PostgreSQL. Companies are deduplicated by `company_number`; existing website domains are skipped.
-
----
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | High-level architecture, components, data flow |
-| [docs/API.md](docs/API.md) | REST API reference by endpoint group |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Production build, env vars, process management, security |
-| [docs/SCRIPTS.md](docs/SCRIPTS.md) | Scripts in `scripts/` (copy-ui-dist, copy-export-html, sync-companies-house) |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Dev setup, lint, tests, submitting changes |
-| [ROADMAP.md](ROADMAP.md) | Feature backlog and priorities |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Common errors and fixes |
+```bash
+npm install
+npm run dev
+```
 
 ---
 
@@ -182,7 +113,7 @@ Output is stored in Supabase PostgreSQL. Companies are deduplicated by `company_
 **Table `usage_log`:**  
 API usage per service (tokens, requests, estimated cost).
 
-See [docs/SCHEMA_PROPOSAL_LISTS_AND_LEADS.md](docs/SCHEMA_PROPOSAL_LISTS_AND_LEADS.md) for lists, list_lead, email_templates, email_logs, and status lifecycle.
+Schema is defined in `db/migrations/001_init.sql`.
 
 ---
 
@@ -219,10 +150,6 @@ Pipeline source `google_maps`: search by keyword + location (e.g. "plumbers" in 
 
 - **Scoring:** In Profile, set **Lead scoring criteria** and **Google AI** key. On a lead, use **Score** to get 1–10 and store in `score`.
 - **Draft:** Use **Generate** on a lead to create a cold email with Gemini; stored as `outreach_draft`.
-
-Errors (e.g. missing key, rate limit): [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
-
----
 
 ## LinkedIn source (Apify)
 
@@ -272,4 +199,4 @@ Full list and pipeline/Serper/CH errors: [TROUBLESHOOTING.md](TROUBLESHOOTING.md
 
 ## License & support
 
-CHScanner is provided as-is. For bugs, feature requests, or contributions, open an issue or see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
+CHScanner is provided as-is. For bugs or feature requests, open an issue.

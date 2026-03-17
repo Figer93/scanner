@@ -20,13 +20,11 @@ const {
     upsertLead,
     getLeadById,
     getLeadByCompanyNumber,
-    hasEnrichedLead,
     leadExistsByDomain,
     closeDb,
     updateLeadEnrichment,
     STATUS,
     LEAD_SOURCE,
-    DEFAULT_DB_PATH
 } = require('./services/database');
 const { generateIceBreaker, extractWebsiteEnrichment } = require('./services/ai');
 const { getResolvedKeys, recordUsage } = require('./services/usageTracker');
@@ -83,7 +81,7 @@ async function runPipeline({ limit, inputFile, source: sourceOpt, googleMapsKeyw
 
     const logger = progressLogger(onProgress);
 
-    const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+    const db = await getDb();
     initSchema(db);
     const apiKeys = await getResolvedKeys(db);
 

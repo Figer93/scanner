@@ -41,7 +41,7 @@ const DEFAULT_DB_PATH = null;
  * Returns a PostgreSQL database adapter.
  * @returns {Promise<{ query: Function, queryOne: Function, run: Function, runReturningId: Function }>}
  */
-async function getDb() {
+async function getDb(_dbPathIgnored = null) {
     if (!pool) {
         throw new Error(
             'DATABASE_URL is not set. Set DATABASE_URL to your Supabase PostgreSQL connection string (Project Settings → Database).'

@@ -3,13 +3,12 @@
  */
 
 const { getDb, initSchema, getFunnelStats, getCostPerLeadStats, getScoreDistribution, getProfile, getListById, getListAnalytics, getRecentActivity, getEmailPerformance } = require('../services/database');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const logger = require('../lib/logger');
 
 function mountAnalytics(app) {
     app.get('/api/analytics/funnel', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             res.json(await getFunnelStats(db));
         } catch (err) {
             logger.error({ err }, 'Failed to get funnel stats');
@@ -19,7 +18,7 @@ function mountAnalytics(app) {
 
     app.get('/api/analytics/cost-per-lead', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             res.json(await getCostPerLeadStats(db));
         } catch (err) {
             logger.error({ err }, 'Failed to get cost-per-lead stats');
@@ -29,7 +28,7 @@ function mountAnalytics(app) {
 
     app.get('/api/analytics/score-distribution', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             res.json(await getScoreDistribution(db));
         } catch (err) {
             logger.error({ err }, 'Failed to get score distribution');
@@ -39,7 +38,7 @@ function mountAnalytics(app) {
 
     app.get('/api/analytics/last-pipeline-run', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             const profile = getProfile(db);
             const raw = profile.last_pipeline_run;
             if (!raw) return res.json(null);
@@ -52,7 +51,7 @@ function mountAnalytics(app) {
 
     app.get('/api/analytics/recent-activity', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const limit = Math.min(parseInt(req.query.limit, 10) || 5, 20);
             res.json(await getRecentActivity(db, limit));
@@ -64,7 +63,7 @@ function mountAnalytics(app) {
 
     app.get('/api/analytics/email-performance', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const days = Math.min(parseInt(req.query.days, 10) || 30, 365);
             res.json(await getEmailPerformance(db, days));
@@ -78,7 +77,7 @@ function mountAnalytics(app) {
         const listId = parseInt(req.params.listId, 10);
         if (isNaN(listId) || listId < 1) return res.status(400).json({ error: 'Invalid list id' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const list = await getListById(db, listId);
             if (!list) return res.status(404).json({ error: 'List not found' });

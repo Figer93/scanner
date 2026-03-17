@@ -4,11 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  optimizeDeps: {
-    include: ['react-is', 'recharts'],
-  },
   server: {
-    allowedHosts: ['lifeful-lawlike-wilber.ngrok-free.dev'],
     hmr: true, // Hot Module Replacement — file saves auto-refresh the browser (default, explicit for clarity)
     proxy: {
       '/api': 'http://localhost:3001',

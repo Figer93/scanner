@@ -4,7 +4,6 @@
 
 const { z } = require('zod');
 const { getDb, initSchema, getEmailTemplates, getEmailTemplateById, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate, getLeadById, getProfile, addEmailLog, updateLead, addLeadActivity, STATUS } = require('../services/database');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const { resolveTemplateVariables } = require('../lib/templateVars');
 const logger = require('../lib/logger');
 const { sendMailgunEmail } = require('../services/mailgun');
@@ -21,7 +20,7 @@ const sendToLeadSchema = z.object({
 function mountEmailTemplates(app) {
     app.get('/api/email-templates', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             res.json(getEmailTemplates(db));
         } catch (err) {
@@ -34,7 +33,7 @@ function mountEmailTemplates(app) {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id) || id < 1) return res.status(400).json({ error: 'Invalid template id' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const template = getEmailTemplateById(db, id);
             if (!template) return res.status(404).json({ error: 'Template not found' });
@@ -47,7 +46,7 @@ function mountEmailTemplates(app) {
 
     app.post('/api/email-templates', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const { name, subject, body } = req.body || {};
             if (!name || !String(name).trim()) return res.status(400).json({ error: 'name is required' });
@@ -64,7 +63,7 @@ function mountEmailTemplates(app) {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id) || id < 1) return res.status(400).json({ error: 'Invalid template id' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const template = getEmailTemplateById(db, id);
             if (!template) return res.status(404).json({ error: 'Template not found' });
@@ -85,7 +84,7 @@ function mountEmailTemplates(app) {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id) || id < 1) return res.status(400).json({ error: 'Invalid template id' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const template = getEmailTemplateById(db, id);
             if (!template) return res.status(404).json({ error: 'Template not found' });
@@ -104,7 +103,7 @@ function mountEmailTemplates(app) {
         if (isNaN(id) || id < 1) return res.status(400).json({ error: 'Invalid template id' });
         if (isNaN(leadId) || leadId < 1) return res.status(400).json({ error: 'Valid leadId query is required' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const template = getEmailTemplateById(db, id);
             if (!template) return res.status(404).json({ error: 'Template not found' });
@@ -130,7 +129,7 @@ function mountEmailTemplates(app) {
         }
         const { toEmail, leadId } = parsed.data;
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const template = getEmailTemplateById(db, id);
             if (!template) return res.status(404).json({ error: 'Template not found' });
@@ -176,7 +175,7 @@ function mountEmailTemplates(app) {
         }
         const { leadId } = parsed.data;
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const template = getEmailTemplateById(db, id);
             if (!template) return res.status(404).json({ error: 'Template not found' });

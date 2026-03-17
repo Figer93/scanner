@@ -20,7 +20,6 @@ const {
     addEmailLog, updateLead, getProfile, setProfileKey, addLeadActivity, setEnrolmentStatusForLead,
 } = require('../services/database');
 const { STATUS } = require('../services/database');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const { validate, validateQuery } = require('../middleware/validate');
 const logger = require('../lib/logger');
 
@@ -102,7 +101,7 @@ async function getExpectedBrevoSecret(db) {
  */
 async function verifyBrevoWebhook(req, res, next) {
     try {
-        const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+        const db = await getDb();
         initSchema(db);
         const expectedSecret = await getExpectedBrevoSecret(db);
         if (!expectedSecret) {
@@ -148,7 +147,7 @@ async function recordMailgunWebhookReceived(db) {
 function mountEmailLogs(app) {
     app.get('/api/email-logs', validateQuery(emailLogsQuerySchema), async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const { leadId, listId, limit } = req.query;
             const logs = await getEmailLogs(db, { leadId, listId, limit });
@@ -161,7 +160,7 @@ function mountEmailLogs(app) {
 
     app.post('/api/email-logs', validate(emailLogCreateSchema), async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const { lead_id, template_id, brevo_message_id, direction, status } = req.body;
             const { id } = await addEmailLog(db, {
@@ -181,7 +180,7 @@ function mountEmailLogs(app) {
 
     app.post('/api/webhooks/brevo', verifyBrevoWebhook, validate(brevoWebhookSchema), async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const body = req.body;
             const messageId = body['message-id'] || body.messageId || body.message_id;
@@ -238,7 +237,7 @@ function mountEmailLogs(app) {
             if (items.length === 0) {
                 return res.status(200).json({ ok: true, processed: 0 });
             }
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             let processed = 0;
             for (const item of items) {
@@ -281,7 +280,7 @@ function mountEmailLogs(app) {
     // POST /api/webhooks/mailgun/events — delivered/open/click/bounce
     app.post('/api/webhooks/mailgun/events', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             // Basic Mailgun event payload: signature verification should be enabled with MAILGUN_SIGNING_KEY
             const body = req.body || {};
@@ -342,7 +341,7 @@ function mountEmailLogs(app) {
                 return res.status(200).json({ ok: true, processed: 0 });
             }
 
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
 
             // Prefer matching by In-Reply-To provider_message_id, fall back to Message-Id.
@@ -388,7 +387,7 @@ function mountEmailLogs(app) {
     // ── Test endpoint: simulate Brevo webhook by leadId (no message-id lookup) ──
     app.post('/api/webhooks/brevo/test', validate(brevoWebhookTestSchema), async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const { event, leadId } = req.body;
             const logs = await getEmailLogs(db, { leadId, limit: 1 });
@@ -421,7 +420,7 @@ function mountEmailLogs(app) {
     // ── Brevo status: secret configured?, last webhook, event count ──
     app.get('/api/webhooks/brevo/status', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const profile = await getProfile(db);
             const secret = (profile.brevo_webhook_secret || process.env.BREVO_WEBHOOK_SECRET || '').toString().trim();
@@ -440,7 +439,7 @@ function mountEmailLogs(app) {
     // ── Mailgun status endpoint (minimal for now) ──
     app.get('/api/webhooks/mailgun/status', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const profile = await getProfile(db);
             const lastAt = profile.mailgun_last_webhook_at || null;

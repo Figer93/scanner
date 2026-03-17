@@ -3,17 +3,13 @@
  */
 
 const XLSX = require('xlsx');
-const { getDb, getAllLeads, getLeadsByListId, DEFAULT_DB_PATH } = require('../../services/database');
+const { getDb, getAllLeads, getLeadsByListId } = require('../../services/database');
 const { validateQuery } = require('../../middleware/validate');
 const logger = require('../../lib/logger');
 const { exportQuerySchema } = require('../../schemas/leads');
 
 const XLSX_HEADERS = ['id', 'company_name', 'company_number', 'address', 'postcode', 'website', 'emails', 'phones', 'contact_form', 'status', 'score', 'ice_breaker', 'outreach_draft', 'source', 'website_services', 'website_size', 'website_tech', 'assigned_to', 'created_at', 'updated_at'];
 const CSV_HEADERS  = ['id', 'company_name', 'company_number', 'address', 'postcode', 'website', 'emails', 'phones', 'contact_form', 'status', 'score', 'ice_breaker', 'outreach_draft', 'source', 'assigned_to', 'created_at', 'updated_at'];
-
-function resolveDbPath() {
-    return process.env.DB_PATH || DEFAULT_DB_PATH;
-}
 
 function escapeCsvCell(value) {
     if (value == null) return '';
@@ -28,7 +24,7 @@ function mountLeadsExport(app) {
     app.get('/api/leads/export', validateQuery(exportQuerySchema), async (req, res) => {
         const { format, listId } = req.query;
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const leads = (Number.isInteger(listId) && listId >= 1)
                 ? getLeadsByListId(db, listId)
                 : getAllLeads(db);

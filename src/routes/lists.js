@@ -5,13 +5,12 @@
 const { getDb, initSchema, getLists, getListById, createList, updateList, deleteList, getLeadsByListId } = require('../services/database');
 const { enrichLeads } = require('../services/leadEnrichment');
 const { getLeadById, updateLead } = require('../services/database');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const logger = require('../lib/logger');
 
 function mountLists(app) {
     app.get('/api/lists', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             res.json(await getLists(db));
         } catch (err) {
@@ -22,7 +21,7 @@ function mountLists(app) {
 
     app.post('/api/lists', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const { name, description } = req.body || {};
             if (!name || !String(name).trim()) return res.status(400).json({ error: 'name is required' });
@@ -38,7 +37,7 @@ function mountLists(app) {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id) || id < 1) return res.status(400).json({ error: 'Invalid list id' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const list = await getListById(db, id);
             if (!list) return res.status(404).json({ error: 'List not found' });
@@ -53,7 +52,7 @@ function mountLists(app) {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id) || id < 1) return res.status(400).json({ error: 'Invalid list id' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const list = await getListById(db, id);
             if (!list) return res.status(404).json({ error: 'List not found' });
@@ -70,7 +69,7 @@ function mountLists(app) {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id) || id < 1) return res.status(400).json({ error: 'Invalid list id' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const list = await getListById(db, id);
             if (!list) return res.status(404).json({ error: 'List not found' });
@@ -86,7 +85,7 @@ function mountLists(app) {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id) || id < 1) return res.status(400).json({ error: 'Invalid list id' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const list = await getListById(db, id);
             if (!list) return res.status(404).json({ error: 'List not found' });
@@ -101,7 +100,7 @@ function mountLists(app) {
         const listId = parseInt(req.params.id, 10);
         if (isNaN(listId) || listId < 1) return res.status(400).json({ error: 'Invalid list id' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const list = await getListById(db, listId);
             if (!list) return res.status(404).json({ error: 'List not found' });

@@ -3,7 +3,7 @@
  * All routes are POST /api/leads/:id/<action>.
  */
 
-const { getDb, initSchema, getLeadById, updateLead, addLeadActivity, getProfile, DEFAULT_DB_PATH } = require('../../services/database');
+const { getDb, initSchema, getLeadById, updateLead, addLeadActivity, getProfile } = require('../../services/database');
 const { getResolvedKeys } = require('../../services/usageTracker');
 const { scoreLead, generateOutreachDraft } = require('../../services/ai');
 const { syncLeadById } = require('../../index');
@@ -13,15 +13,11 @@ const { validateParams } = require('../../middleware/validate');
 const logger = require('../../lib/logger');
 const { leadIdParamsSchema } = require('../../schemas/leads');
 
-function resolveDbPath() {
-    return process.env.DB_PATH || DEFAULT_DB_PATH;
-}
-
 function mountLeadsAi(app) {
     app.post('/api/leads/:id/score', validateParams(leadIdParamsSchema), async (req, res) => {
         const { id } = req.params;
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const lead = await getLeadById(db, id);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });
             const profile = await getProfile(db);
@@ -47,7 +43,7 @@ function mountLeadsAi(app) {
     app.post('/api/leads/:id/outreach-draft', validateParams(leadIdParamsSchema), async (req, res) => {
         const { id } = req.params;
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             const lead = await getLeadById(db, id);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });
             const apiKeys = await getResolvedKeys(db);
@@ -65,7 +61,7 @@ function mountLeadsAi(app) {
     app.post('/api/leads/:id/sync', validateParams(leadIdParamsSchema), async (req, res) => {
         const { id } = req.params;
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const lead = await getLeadById(db, id);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });
@@ -89,7 +85,7 @@ function mountLeadsAi(app) {
     app.post('/api/leads/:id/enrich', validateParams(leadIdParamsSchema), async (req, res) => {
         const { id } = req.params;
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const lead = await getLeadById(db, id);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });

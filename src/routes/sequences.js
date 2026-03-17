@@ -4,7 +4,6 @@
 
 const { z } = require('zod');
 const { getDb, initSchema, getSequenceById, getSequences, createSequence, updateSequence, deleteSequence, getSequenceSteps, createSequenceStep, updateSequenceStep, deleteSequenceStep, getEnrolmentsBySequence, countActiveEnrolmentsBySequence, enrolLead, getEmailTemplateById, getListLeadIds } = require('../services/database');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const { VALID_CONDITIONS } = require('../db/sequences');
 const logger = require('../lib/logger');
 
@@ -27,10 +26,6 @@ const enrolSchema = z.object({
     leadIds: z.array(z.coerce.number().int().positive()).optional(),
 }).strict().refine((d) => d.listId != null || (Array.isArray(d.leadIds) && d.leadIds.length > 0), { message: 'Provide listId or non-empty leadIds' });
 
-function resolveDbPath() {
-    return process.env.DB_PATH || DEFAULT_DB_PATH;
-}
-
 /** Steps with template name for UI */
 async function getSequenceStepsWithTemplateNames(db, sequenceId) {
     const steps = await getSequenceSteps(db, sequenceId);
@@ -45,7 +40,7 @@ async function getSequenceStepsWithTemplateNames(db, sequenceId) {
 function mountSequences(app) {
     app.get('/api/sequences', async (req, res) => {
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const list = await getSequences(db);
             const includeSteps = req.query.steps === '1' || req.query.steps === 'true';
@@ -71,7 +66,7 @@ function mountSequences(app) {
             return res.status(400).json({ error: msg });
         }
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const { id } = await createSequence(db, parsed.data.name);
             res.status(201).json(await getSequenceById(db, id));
@@ -85,7 +80,7 @@ function mountSequences(app) {
         const parsed = sequenceIdParam.safeParse(req.params);
         if (!parsed.success) return res.status(400).json({ error: 'Invalid sequence id' });
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const seq = await getSequenceById(db, parsed.data.id);
             if (!seq) return res.status(404).json({ error: 'Sequence not found' });
@@ -104,7 +99,7 @@ function mountSequences(app) {
         if (!parsed.success) return res.status(400).json({ error: 'Invalid sequence id' });
         if (!body.success) return res.status(400).json({ error: body.error.errors.map((e) => e.message).join('; ') });
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const seq = await getSequenceById(db, parsed.data.id);
             if (!seq) return res.status(404).json({ error: 'Sequence not found' });
@@ -120,7 +115,7 @@ function mountSequences(app) {
         const parsed = sequenceIdParam.safeParse(req.params);
         if (!parsed.success) return res.status(400).json({ error: 'Invalid sequence id' });
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const seq = await getSequenceById(db, parsed.data.id);
             if (!seq) return res.status(404).json({ error: 'Sequence not found' });
@@ -136,7 +131,7 @@ function mountSequences(app) {
         const parsed = sequenceIdParam.safeParse(req.params);
         if (!parsed.success) return res.status(400).json({ error: 'Invalid sequence id' });
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const seq = await getSequenceById(db, parsed.data.id);
             if (!seq) return res.status(404).json({ error: 'Sequence not found' });
@@ -153,7 +148,7 @@ function mountSequences(app) {
         if (!parsed.success) return res.status(400).json({ error: 'Invalid sequence id' });
         if (!body.success) return res.status(400).json({ error: body.error.errors.map((e) => e.message).join('; ') });
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const seq = await getSequenceById(db, parsed.data.id);
             if (!seq) return res.status(404).json({ error: 'Sequence not found' });
@@ -175,7 +170,7 @@ function mountSequences(app) {
         if (!params.success) return res.status(400).json({ error: 'Invalid params' });
         if (!body.success) return res.status(400).json({ error: body.error.errors.map((e) => e.message).join('; ') });
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const seq = await getSequenceById(db, params.data.id);
             if (!seq) return res.status(404).json({ error: 'Sequence not found' });
@@ -198,7 +193,7 @@ function mountSequences(app) {
         const params = z.object({ id: z.coerce.number().int().positive(), stepId: z.coerce.number().int().positive() }).safeParse(req.params);
         if (!params.success) return res.status(400).json({ error: 'Invalid params' });
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const seq = await getSequenceById(db, params.data.id);
             if (!seq) return res.status(404).json({ error: 'Sequence not found' });
@@ -218,7 +213,7 @@ function mountSequences(app) {
         if (!parsed.success) return res.status(400).json({ error: 'Invalid sequence id' });
         if (!body.success) return res.status(400).json({ error: body.error.errors.map((e) => e.message).join('; ') });
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const seq = await getSequenceById(db, parsed.data.id);
             if (!seq) return res.status(404).json({ error: 'Sequence not found' });
@@ -245,7 +240,7 @@ function mountSequences(app) {
         const parsed = sequenceIdParam.safeParse(req.params);
         if (!parsed.success) return res.status(400).json({ error: 'Invalid sequence id' });
         try {
-            const db = await getDb(resolveDbPath());
+            const db = await getDb();
             initSchema(db);
             const seq = await getSequenceById(db, parsed.data.id);
             if (!seq) return res.status(404).json({ error: 'Sequence not found' });

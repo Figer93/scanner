@@ -4,14 +4,13 @@
  */
 
 const { getDb, initSchema, getProfile, getEarningsMonthly, getEarningsWeekly, getEarningsTopTemplates } = require('../services/database');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const { authenticate } = require('../middleware/authenticate');
 const logger = require('../lib/logger');
 
 function mountEarnings(app) {
     app.get('/api/earnings', authenticate, async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const profile = await getProfile(db);
 

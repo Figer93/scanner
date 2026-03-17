@@ -6,7 +6,7 @@
 
 const axios = require('axios');
 const logger = require('../lib/logger');
-const { getProfile, getDb, DEFAULT_DB_PATH } = require('./database');
+const { getProfile, getDb } = require('./database');
 
 function getMailgunConfigFromProfile(profile) {
     const apiKey = (profile.mailgun_api_key || process.env.MAILGUN_API_KEY || '').trim();
@@ -62,7 +62,7 @@ async function sendMailgunEmail({
 
     let profile = profileOverride;
     if (!profile) {
-        const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+        const db = await getDb();
         profile = await getProfile(db);
     }
 

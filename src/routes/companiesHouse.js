@@ -5,7 +5,6 @@
 const { getDb, initSchema } = require('../services/database');
 const { getResolvedKeys } = require('../services/usageTracker');
 const { getCompanyByNumber, getOfficers, getPSCs, getCharges } = require('../services/companiesHouse');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const logger = require('../lib/logger');
 
 function mountCompaniesHouse(app) {
@@ -13,7 +12,7 @@ function mountCompaniesHouse(app) {
         const number = (req.params.number || '').trim();
         if (!number) return res.status(400).json({ error: 'Company number is required' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             const apiKeys = await getResolvedKeys(db);
             const apiKey = apiKeys.companies_house_api_key || process.env.COMPANIES_HOUSE_API_KEY || '';
             if (!apiKey || !apiKey.trim()) {

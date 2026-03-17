@@ -7,8 +7,6 @@ const fs = require('fs');
 
 // Server config (from env). DATABASE_URL is required (Supabase PostgreSQL connection string).
 const PORT = parseInt(process.env.PORT, 10) || 3001;
-/** @deprecated Unused; backend uses PostgreSQL only. Kept for getDb(dbPath) call-site compatibility. */
-const DB_PATH = null;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 const LOG_PRETTY = process.env.LOG_PRETTY === '1' || process.env.LOG_PRETTY === 'true';
@@ -62,7 +60,6 @@ function loadCompanies(inputPath) {
 
 module.exports = {
     PORT,
-    DB_PATH,
     NODE_ENV,
     LOG_LEVEL,
     LOG_PRETTY,

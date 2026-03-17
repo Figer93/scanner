@@ -5,7 +5,6 @@
 
 const { z } = require('zod');
 const { getDb, initSchema, getProfile, setProfileKey, deleteProfileKey } = require('../services/database');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const { authenticate } = require('../middleware/authenticate');
 const { validate, validateParams } = require('../middleware/validate');
 const logger = require('../lib/logger');
@@ -85,7 +84,7 @@ const profileDeleteParamsSchema = z.object({
 function mountProfile(app) {
     app.get('/api/profile', authenticate, async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             const profile = await getProfile(db);
             const masked = {};
             PROFILE_KEYS.forEach((k) => {
@@ -133,7 +132,7 @@ function mountProfile(app) {
 
     app.post('/api/profile', authenticate, validate(profileUpdateSchema), async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const before = await getProfile(db);
             const body = req.body || {};
@@ -182,7 +181,7 @@ function mountProfile(app) {
     app.delete('/api/profile/:key', authenticate, validateParams(profileDeleteParamsSchema), async (req, res) => {
         const key = req.params.key;
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             await deleteProfileKey(db, key);
             res.json({ ok: true });
         } catch (err) {

@@ -5,13 +5,12 @@
 const { getDb, initSchema, getChCacheCount, searchChCache } = require('../services/database');
 const { getResolvedKeys, recordUsage } = require('../services/usageTracker');
 const { syncFromApi } = require('../services/companiesHouseCache');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const logger = require('../lib/logger');
 
 function mountChCache(app) {
     app.get('/api/ch-cache/count', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             res.json({ count: await getChCacheCount(db) });
         } catch (err) {
@@ -22,7 +21,7 @@ function mountChCache(app) {
 
     app.get('/api/ch-cache/search', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const q = req.query.q || '';
             const limit = Math.min(500, parseInt(req.query.limit, 10) || 100);
@@ -39,7 +38,7 @@ function mountChCache(app) {
 
     app.post('/api/ch-cache/sync', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const apiKeys = await getResolvedKeys(db);
             const apiKey = apiKeys.companies_house_api_key || process.env.COMPANIES_HOUSE_API_KEY || '';

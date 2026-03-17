@@ -4,7 +4,6 @@
 
 const { getDb, getLeadById, getProfile, addLeadActivity } = require('../services/database');
 const { pushLeadToCrm } = require('../services/crmPush');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const logger = require('../lib/logger');
 
 function mountCrm(app) {
@@ -16,7 +15,7 @@ function mountCrm(app) {
             return res.status(400).json({ error: 'Invalid provider. Use hubspot, pipedrive, or salesforce.' });
         }
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             const lead = await getLeadById(db, id);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });
             const profile = await getProfile(db);
@@ -47,7 +46,7 @@ function mountCrm(app) {
         }
         if (!leadIds.length) return res.status(400).json({ error: 'Provide leadIds array.' });
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             const profile = await getProfile(db);
             const credentials = {
                 hubspot_api_key: profile.hubspot_api_key || process.env.HUBSPOT_API_KEY || '',

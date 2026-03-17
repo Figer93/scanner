@@ -3,7 +3,6 @@
  */
 
 const { getDb, getProfile, setProfileKey } = require('../services/database');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const logger = require('../lib/logger');
 
 function mountSchedule(app, context = {}) {
@@ -11,7 +10,7 @@ function mountSchedule(app, context = {}) {
 
     app.get('/api/schedule', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             const profile = await getProfile(db);
             res.json({
                 cron: profile.scheduled_run_cron || process.env.CRON_SCHEDULE || '',
@@ -32,7 +31,7 @@ function mountSchedule(app, context = {}) {
             return res.status(400).json({ error: 'Invalid cron expression (e.g. "0 9 * * *" for daily at 9am)' });
         }
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             if (body.cron !== undefined) await setProfileKey(db, 'scheduled_run_cron', cronExpr);
             if (body.source !== undefined) await setProfileKey(db, 'scheduled_run_source', body.source);
             if (body.limit !== undefined) await setProfileKey(db, 'scheduled_run_limit', String(body.limit));

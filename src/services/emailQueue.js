@@ -18,7 +18,6 @@ const {
     updateLead,
     STATUS,
 } = require('./database');
-const { DEFAULT_DB_PATH } = require('./database');
 const { sendMailgunEmail } = require('./mailgun');
 
 const DEFAULT_DAILY_LIMIT = 50;
@@ -102,10 +101,10 @@ async function sendSequenceEmail(db, { leadId, templateId, profile }) {
     }
 }
 
-async function runQueue(dbPath = process.env.DB_PATH || DEFAULT_DB_PATH) {
+async function runQueue() {
     let db;
     try {
-        db = await getDb(dbPath);
+        db = await getDb();
     } catch (err) {
         logger.error({ err: err.message }, 'Email queue: getDb failed');
         return;

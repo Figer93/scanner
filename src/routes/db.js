@@ -8,13 +8,12 @@ const { STATUS } = require('../services/database');
 const { getLeadById, updateLead } = require('../services/database');
 const { getQueueStatusData } = require('../services/emailQueue');
 const { backgroundJob } = require('../serverContext');
-const { DEFAULT_DB_PATH } = require('../services/database');
 const logger = require('../lib/logger');
 
 function mountDb(app) {
     app.get('/api/db/stats', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             res.json(await getDbStats(db));
         } catch (err) {
@@ -28,7 +27,7 @@ function mountDb(app) {
             if (backgroundJob.running) {
                 return res.status(409).json({ ok: false, error: 'A background job is already running', job: backgroundJob.job });
             }
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const listId = req.body?.listId != null ? parseInt(req.body.listId, 10) : undefined;
             const leadIds = await getLeadIdsByStatus(db, STATUS.NEW, Number.isInteger(listId) && listId >= 1 ? listId : undefined);
@@ -43,7 +42,7 @@ function mountDb(app) {
             // NOTE: IIFE intentionally fires after response. Errors captured in backgroundJob.error for polling.
             (async () => {
                 try {
-                    const dbJob = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+                    const dbJob = await getDb();
                     for (let i = 0; i < leadIds.length; i++) {
                         await enrichLead(dbJob, leadIds[i], { getLeadById, updateLead });
                         backgroundJob.processed = i + 1;
@@ -77,7 +76,7 @@ function mountDb(app) {
 
     app.post('/api/db/clean-invalid-emails', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const listId = req.body?.listId ?? req.query?.listId;
             const id = listId != null ? parseInt(listId, 10) : undefined;
@@ -91,7 +90,7 @@ function mountDb(app) {
 
     app.get('/api/db/queue-status', async (req, res) => {
         try {
-            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            const db = await getDb();
             initSchema(db);
             const profile = await getProfile(db);
             res.json(await getQueueStatusData(db, profile));

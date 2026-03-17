@@ -4,16 +4,11 @@
  */
 
 const { getDb, initSchema } = require('../services/database');
-const config = require('../config');
 const logger = require('../lib/logger');
-
-function getDbPath() {
-    return config.DB_PATH;
-}
 
 async function checkDb() {
     try {
-        const db = await getDb(getDbPath());
+        const db = await getDb();
         initSchema(db);
         return { ok: true };
     } catch (err) {
