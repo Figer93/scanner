@@ -9,6 +9,7 @@ const { DEFAULT_DB_PATH } = require('../services/database');
 const { authenticate } = require('../middleware/authenticate');
 const { validate, validateParams } = require('../middleware/validate');
 const logger = require('../lib/logger');
+const { sendAudit } = require('../services/auditWebhook');
 
 const PROFILE_KEYS = [
     'serper_api_key', 'companies_house_api_key', 'google_places_api_key',
@@ -134,6 +135,7 @@ function mountProfile(app) {
         try {
             const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
             initSchema(db);
+            const before = await getProfile(db);
             const body = req.body || {};
             for (const k of PROFILE_KEYS) {
                 if (body[k] === undefined) continue;
@@ -159,6 +161,17 @@ function mountProfile(app) {
             if (body.webhook_url !== undefined) await setProfileKey(db, 'webhook_url', body.webhook_url);
             if (body.webhook_score_threshold !== undefined) await setProfileKey(db, 'webhook_score_threshold', String(body.webhook_score_threshold));
             if (body.team_members !== undefined) await setProfileKey(db, 'team_members', body.team_members);
+            const after = await getProfile(db);
+
+            const changedKeys = Object.keys(body || {}).filter((k) => body[k] !== undefined);
+            await sendAudit({
+                action: 'profile.update',
+                actor: req.user?.sub || 'admin',
+                resource: 'profile',
+                meta: { changedKeys },
+                before: { changedKeys: changedKeys.reduce((acc, k) => { acc[k] = before?.[k]; return acc; }, {}) },
+                after: { changedKeys: changedKeys.reduce((acc, k) => { acc[k] = after?.[k]; return acc; }, {}) },
+            });
             res.json({ ok: true });
         } catch (err) {
             logger.error({ err }, 'Failed to update profile');

@@ -135,6 +135,14 @@ async function recordWebhookReceived(db) {
     await setProfileKey(db, 'brevo_webhook_count', String(count));
 }
 
+/** Record that a Mailgun webhook was received (for status endpoint) */
+async function recordMailgunWebhookReceived(db) {
+    const profile = await getProfile(db);
+    const count = (parseInt(profile.mailgun_webhook_count, 10) || 0) + 1;
+    await setProfileKey(db, 'mailgun_last_webhook_at', new Date().toISOString());
+    await setProfileKey(db, 'mailgun_webhook_count', String(count));
+}
+
 // ── Route handlers ───────────────────────────────────────────
 
 function mountEmailLogs(app) {
@@ -311,6 +319,7 @@ function mountEmailLogs(app) {
             }
 
             logger.info({ providerMessageId, event, leadId: logEntry.lead_id, updated: didUpdate }, 'Mailgun event processed');
+            if (didUpdate) await recordMailgunWebhookReceived(db);
             res.status(200).json({ ok: true, updated: didUpdate });
         } catch (err) {
             logger.error({ err }, 'Mailgun events webhook failed');
@@ -366,6 +375,8 @@ function mountEmailLogs(app) {
                 to_email: null,
                 sent_at: sentAt || null,
             });
+
+            await recordMailgunWebhookReceived(db);
 
             res.status(200).json({ ok: true, processed: 1 });
         } catch (err) {
