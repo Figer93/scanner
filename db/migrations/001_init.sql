@@ -114,6 +114,8 @@ CREATE TABLE IF NOT EXISTS email_logs (
     lead_id INTEGER NOT NULL REFERENCES leads(id),
     template_id INTEGER REFERENCES email_templates(id),
     brevo_message_id TEXT,
+    provider TEXT,
+    provider_message_id TEXT,
     direction TEXT,
     status TEXT,
     subject TEXT,
@@ -126,6 +128,7 @@ CREATE TABLE IF NOT EXISTS email_logs (
 
 CREATE INDEX IF NOT EXISTS idx_email_logs_lead_id ON email_logs(lead_id);
 CREATE INDEX IF NOT EXISTS idx_email_logs_brevo_message_id ON email_logs(brevo_message_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_provider_message_id ON email_logs(provider_message_id);
 
 -- Sequences
 CREATE TABLE IF NOT EXISTS sequences (

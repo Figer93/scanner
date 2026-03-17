@@ -3,7 +3,6 @@
  * and daily cap. Run every 5 minutes from server.js.
  */
 
-const axios = require('axios');
 const logger = require('../lib/logger');
 const { resolveTemplateVariables } = require('../lib/templateVars');
 const {
@@ -20,6 +19,7 @@ const {
     STATUS,
 } = require('./database');
 const { DEFAULT_DB_PATH } = require('./database');
+const { sendMailgunEmail } = require('./mailgun');
 
 const DEFAULT_DAILY_LIMIT = 50;
 const DEFAULT_SEND_DELAY_MINUTES = 3;
@@ -59,38 +59,34 @@ async function sendSequenceEmail(db, { leadId, templateId, profile }) {
     const template = await getEmailTemplateById(db, templateId);
     if (!template) return { ok: false, error: 'Template not found' };
 
-    const apiKey = (profile.brevo_api_key || process.env.BREVO_API_KEY || '').trim();
-    const senderEmail = (profile.sender_email || process.env.BREVO_SENDER_EMAIL || '').trim();
-    const senderName = (profile.sender_name || process.env.BREVO_SENDER_NAME || 'CHScanner').trim();
-    if (!apiKey || !senderEmail) return { ok: false, error: 'Brevo not configured' };
+    const senderEmail = (profile.sender_email || process.env.MAILGUN_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || '').trim();
+    if (!senderEmail) return { ok: false, error: 'Sender email not configured' };
 
     const { subject, body } = resolveTemplateVariables(template, lead, profile);
     const htmlContent = body && /<[a-z][\s\S]*>/i.test(body) ? body : null;
     const textContent = htmlContent ? null : (body || '');
 
-    const payload = {
-        sender: { name: senderName, email: senderEmail },
-        to: [{ email: toEmail }],
-        subject: subject || '(No subject)',
-        ...(htmlContent ? { htmlContent } : {}),
-        ...(textContent !== null ? { textContent } : {}),
-    };
-
     try {
-        const res = await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
-            headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
-            validateStatus: () => true,
+        const sendResult = await sendMailgunEmail({
+            to: toEmail,
+            subject: subject || '(No subject)',
+            text: textContent,
+            html: htmlContent,
+            tags: ['sequence'],
+            variables: { leadId, templateId },
+            profileOverride: profile,
         });
-        if (res.status !== 201) {
-            const errMsg = res.data?.message || res.statusText || 'Brevo send failed';
-            logger.warn({ status: res.status, data: res.data }, 'Brevo sequence send rejected');
-            return { ok: false, error: errMsg };
+        if (!sendResult.ok) {
+            logger.warn({ error: sendResult.error }, 'Mailgun sequence send rejected');
+            return { ok: false, error: sendResult.error || 'Send failed' };
         }
-        const brevoMessageId = res.data?.messageId || null;
+        const providerMessageId = sendResult.providerMessageId || null;
         await addEmailLog(db, {
             lead_id: leadId,
             template_id: templateId,
-            brevo_message_id: brevoMessageId,
+            brevo_message_id: null,
+            provider: 'mailgun',
+            provider_message_id: providerMessageId,
             direction: 'outbound',
             status: 'sent',
             subject: subject || '(No subject)',

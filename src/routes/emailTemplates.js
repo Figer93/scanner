@@ -3,11 +3,11 @@
  */
 
 const { z } = require('zod');
-const axios = require('axios');
 const { getDb, initSchema, getEmailTemplates, getEmailTemplateById, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate, getLeadById, getProfile, addEmailLog, updateLead, addLeadActivity, STATUS } = require('../services/database');
 const { DEFAULT_DB_PATH } = require('../services/database');
 const { resolveTemplateVariables } = require('../lib/templateVars');
 const logger = require('../lib/logger');
+const { sendMailgunEmail } = require('../services/mailgun');
 
 const sendTestSchema = z.object({
     toEmail: z.string().email('Valid email required'),
@@ -119,7 +119,7 @@ function mountEmailTemplates(app) {
         }
     });
 
-    // POST /api/email-templates/:id/send-test — send one email via Brevo with resolved vars
+    // POST /api/email-templates/:id/send-test — send one email via Mailgun with resolved vars
     app.post('/api/email-templates/:id/send-test', async (req, res) => {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id) || id < 1) return res.status(400).json({ error: 'Invalid template id' });
@@ -137,33 +137,24 @@ function mountEmailTemplates(app) {
             const lead = await getLeadById(db, leadId);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });
             const profile = await getProfile(db);
-            const apiKey = (profile.brevo_api_key || process.env.BREVO_API_KEY || '').trim();
-            if (!apiKey) return res.status(400).json({ error: 'Brevo API key not configured. Set in Profile or BREVO_API_KEY.' });
-            const senderEmail = (profile.sender_email || process.env.BREVO_SENDER_EMAIL || '').trim();
-            if (!senderEmail) return res.status(400).json({ error: 'Sender email not configured. Set in Profile or BREVO_SENDER_EMAIL.' });
-            const senderName = (profile.sender_name || process.env.BREVO_SENDER_NAME || 'CHScanner').trim();
 
             const { subject, body, unresolvedVars } = resolveTemplateVariables(template, lead, profile);
             const htmlContent = body && /<[a-z][\s\S]*>/i.test(body) ? body : null;
             const textContent = htmlContent ? null : (body || '');
 
-            const payload = {
-                sender: { name: senderName || 'CHScanner', email: senderEmail },
-                to: [{ email: toEmail }],
+            const sendResult = await sendMailgunEmail({
+                to: toEmail,
                 subject,
-                ...(htmlContent ? { htmlContent } : {}),
-                ...(textContent !== null ? { textContent } : {}),
-            };
-
-            const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
-                headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
-                validateStatus: () => true,
+                text: textContent,
+                html: htmlContent,
+                tags: ['template_test'],
+                variables: { leadId, templateId: id },
+                profileOverride: profile,
             });
 
-            if (brevoRes.status !== 201) {
-                const errMsg = brevoRes.data?.message || brevoRes.statusText || 'Brevo send failed';
-                logger.warn({ status: brevoRes.status, data: brevoRes.data }, 'Brevo send-test rejected');
-                return res.status(502).json({ error: errMsg });
+            if (!sendResult.ok) {
+                logger.warn({ error: sendResult.error }, 'Mailgun send-test rejected');
+                return res.status(502).json({ error: sendResult.error || 'Send failed' });
             }
 
             const previewText = (body || '').replace(/\s+/g, ' ').trim().slice(0, 120);
@@ -174,7 +165,7 @@ function mountEmailTemplates(app) {
         }
     });
 
-    // POST /api/email-templates/:id/send-to-lead — send template to lead's contact email via Brevo, log and update status
+    // POST /api/email-templates/:id/send-to-lead — send template to lead's contact email via Mailgun, log and update status
     app.post('/api/email-templates/:id/send-to-lead', async (req, res) => {
         const id = parseInt(req.params.id, 10);
         if (isNaN(id) || id < 1) return res.status(400).json({ error: 'Invalid template id' });
@@ -196,40 +187,32 @@ function mountEmailTemplates(app) {
                 return res.status(400).json({ error: 'Lead has no valid contact email. Add or edit the contact email for this company first.' });
             }
             const profile = await getProfile(db);
-            const apiKey = (profile.brevo_api_key || process.env.BREVO_API_KEY || '').trim();
-            if (!apiKey) return res.status(400).json({ error: 'Brevo API key not configured. Set in Profile or BREVO_API_KEY.' });
-            const senderEmail = (profile.sender_email || process.env.BREVO_SENDER_EMAIL || '').trim();
-            if (!senderEmail) return res.status(400).json({ error: 'Sender email not configured. Set in Profile or BREVO_SENDER_EMAIL.' });
-            const senderName = (profile.sender_name || process.env.BREVO_SENDER_NAME || 'CHScanner').trim();
 
             const { subject, body } = resolveTemplateVariables(template, lead, profile);
             const htmlContent = body && /<[a-z][\s\S]*>/i.test(body) ? body : null;
             const textContent = htmlContent ? null : (body || '');
 
-            const payload = {
-                sender: { name: senderName || 'CHScanner', email: senderEmail },
-                to: [{ email: toEmail.trim() }],
+            const sendResult = await sendMailgunEmail({
+                to: toEmail.trim(),
                 subject: subject || '(No subject)',
-                ...(htmlContent ? { htmlContent } : {}),
-                ...(textContent !== null ? { textContent } : {}),
-            };
-
-            const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
-                headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
-                validateStatus: () => true,
+                text: textContent,
+                html: htmlContent,
+                tags: ['template_send'],
+                variables: { leadId, templateId: id },
+                profileOverride: profile,
             });
 
-            if (brevoRes.status !== 201) {
-                const errMsg = brevoRes.data?.message || brevoRes.statusText || 'Brevo send failed';
-                logger.warn({ status: brevoRes.status, data: brevoRes.data }, 'Send-to-lead Brevo rejected');
-                return res.status(502).json({ error: errMsg });
+            if (!sendResult.ok) {
+                logger.warn({ error: sendResult.error }, 'Mailgun send-to-lead rejected');
+                return res.status(502).json({ error: sendResult.error || 'Send failed' });
             }
 
-            const brevoMessageId = brevoRes.data?.messageId || null;
             addEmailLog(db, {
                 lead_id: leadId,
                 template_id: id,
-                brevo_message_id: brevoMessageId,
+                brevo_message_id: null,
+                provider: 'mailgun',
+                provider_message_id: sendResult.providerMessageId || null,
                 direction: 'outbound',
                 status: 'sent',
                 subject: subject || '(No subject)',

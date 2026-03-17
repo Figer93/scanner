@@ -21,12 +21,12 @@ const {
     deleteLeadsByIds, getListsByCompanyNumbers,
     STATUS, DEFAULT_DB_PATH,
 } = require('../../services/database');
-const axios = require('axios');
 const { getResolvedKeys } = require('../../services/usageTracker');
 const { validateLead } = require('../../services/leadValidator');
 const { fireWebhookIfConfigured } = require('../../serverContext');
 const { validate, validateQuery, validateParams } = require('../../middleware/validate');
 const logger = require('../../lib/logger');
+const { sendMailgunEmail } = require('../../services/mailgun');
 const {
     leadIdParamsSchema,
     companyNumberParamsSchema,
@@ -275,34 +275,27 @@ function mountLeadsCrud(app) {
                 return res.status(400).json({ error: 'Lead has no contact email. Add or edit the contact email first.' });
             }
             const profile = await getProfile(db);
-            const apiKey = (profile.brevo_api_key || process.env.BREVO_API_KEY || '').trim();
-            if (!apiKey) return res.status(400).json({ error: 'Brevo API key not configured.' });
-            const senderEmail = (profile.sender_email || process.env.BREVO_SENDER_EMAIL || '').trim();
-            if (!senderEmail) return res.status(400).json({ error: 'Sender email not configured.' });
-            const senderName = (profile.sender_name || process.env.BREVO_SENDER_NAME || 'CHScanner').trim();
             const htmlContent = body && /<[a-z][\s\S]*>/i.test(body) ? body : null;
             const textContent = htmlContent ? null : body;
-            const payload = {
-                sender: { name: senderName, email: senderEmail },
-                to: [{ email: toEmail.trim() }],
+            const sendResult = await sendMailgunEmail({
+                to: toEmail.trim(),
                 subject,
-                ...(htmlContent ? { htmlContent } : {}),
-                ...(textContent !== null ? { textContent } : {}),
-            };
-            const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', payload, {
-                headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
-                validateStatus: () => true,
+                text: textContent,
+                html: htmlContent,
+                tags: ['lead_reply'],
+                variables: { leadId: id },
+                profileOverride: profile,
             });
-            if (brevoRes.status !== 201) {
-                const errMsg = brevoRes.data?.message || brevoRes.statusText || 'Brevo send failed';
-                logger.warn({ status: brevoRes.status, data: brevoRes.data }, 'Send-reply Brevo rejected');
-                return res.status(502).json({ error: errMsg });
+            if (!sendResult.ok) {
+                logger.warn({ error: sendResult.error }, 'Send-reply Mailgun rejected');
+                return res.status(502).json({ error: sendResult.error || 'Send reply failed' });
             }
-            const brevoMessageId = brevoRes.data?.messageId || null;
             await addEmailLog(db, {
                 lead_id: id,
                 template_id: null,
-                brevo_message_id: brevoMessageId,
+                brevo_message_id: null,
+                provider: 'mailgun',
+                provider_message_id: sendResult.providerMessageId || null,
                 direction: 'outbound',
                 status: 'sent',
                 subject,

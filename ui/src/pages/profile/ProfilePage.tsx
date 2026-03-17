@@ -12,6 +12,7 @@ import { SkeletonGrid } from '../../components/ui/SkeletonCard';
 import { Button } from '../../components/ui';
 import ApiKeysSection from './ApiKeysSection';
 import BrevoWebhookSection from './BrevoWebhookSection';
+import MailgunWebhookSection from './MailgunWebhookSection';
 import OutreachSection from './OutreachSection';
 import SettingsSection from './SettingsSection';
 import PipelineSection from './PipelineSection';
@@ -106,7 +107,7 @@ export default function ProfilePage({ logs = [], onClearLogs }: ProfilePageProps
             )}
 
             <ApiKeysSection profile={profile} onMessage={handleMessage} />
-            <BrevoWebhookSection />
+            <MailgunWebhookSection />
             <OutreachSection profile={profile} onMessage={handleMessage} />
             <SettingsSection profile={profile} onMessage={handleMessage} />
             <PipelineSection logs={logs} onClearLogs={onClearLogs} onMessage={handleMessage} />

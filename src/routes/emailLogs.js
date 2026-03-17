@@ -89,7 +89,7 @@ async function getEmailLogByBrevoMessageIdFlexible(db, messageId) {
     return log || null;
 }
 
-/** Resolve expected webhook secret: profile (DB) overrides .env */
+/** Resolve expected Brevo webhook secret: profile (DB) overrides .env */
 async function getExpectedBrevoSecret(db) {
     const profile = await getProfile(db);
     return (profile.brevo_webhook_secret || process.env.BREVO_WEBHOOK_SECRET || '').toString().trim();
@@ -127,7 +127,7 @@ async function verifyBrevoWebhook(req, res, next) {
     }
 }
 
-/** Record that a webhook was received (for status endpoint) */
+/** Record that a Brevo webhook was received (for status endpoint) */
 async function recordWebhookReceived(db) {
     const profile = await getProfile(db);
     const count = (parseInt(profile.brevo_webhook_count, 10) || 0) + 1;
@@ -268,6 +268,112 @@ function mountEmailLogs(app) {
         }
     });
 
+    // ── Mailgun webhooks: events + inbound replies ──
+
+    // POST /api/webhooks/mailgun/events — delivered/open/click/bounce
+    app.post('/api/webhooks/mailgun/events', async (req, res) => {
+        try {
+            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            initSchema(db);
+            // Basic Mailgun event payload: signature verification should be enabled with MAILGUN_SIGNING_KEY
+            const body = req.body || {};
+            const event = (body.event || '').toString().toLowerCase();
+            const providerMessageId = (body['message-id'] || body.messageId || body['Message-Id'] || '').toString();
+            if (!providerMessageId || !event) {
+                return res.status(400).json({ error: 'message-id and event required' });
+            }
+
+            // Lookup by provider_message_id
+            const rows = await db.query(
+                'SELECT * FROM email_logs WHERE provider = $1 AND provider_message_id = $2 LIMIT 1',
+                ['mailgun', providerMessageId]
+            );
+            const logEntry = rows && rows[0] ? rows[0] : null;
+            if (!logEntry) {
+                return res.status(200).json({ ok: true, updated: false });
+            }
+
+            let didUpdate = false;
+            if (event === 'opened' || event === 'open') {
+                await updateEmailLogStatus(db, logEntry.id, 'opened');
+                await updateLead(db, logEntry.lead_id, { status: STATUS.OPENED });
+                didUpdate = true;
+            } else if (event === 'clicked' || event === 'click') {
+                await addLeadActivity(db, logEntry.lead_id, 'email_clicked', 'Link clicked in email');
+                didUpdate = true;
+            } else if (event === 'delivered') {
+                await updateEmailLogStatus(db, logEntry.id, 'delivered');
+                await updateLead(db, logEntry.lead_id, { status: STATUS.EMAIL_SENT });
+                didUpdate = true;
+            } else if (event === 'failed' || event === 'bounced') {
+                await updateEmailLogStatus(db, logEntry.id, 'bounced');
+                didUpdate = true;
+            }
+
+            logger.info({ providerMessageId, event, leadId: logEntry.lead_id, updated: didUpdate }, 'Mailgun event processed');
+            res.status(200).json({ ok: true, updated: didUpdate });
+        } catch (err) {
+            logger.error({ err }, 'Mailgun events webhook failed');
+            res.status(500).json({ error: 'Webhook processing failed' });
+        }
+    });
+
+    // POST /api/webhooks/mailgun/inbound — inbound Route replies
+    app.post('/api/webhooks/mailgun/inbound', async (req, res) => {
+        try {
+            const body = req.body || {};
+            const inReplyTo = (body['In-Reply-To'] || body['in-reply-to'] || body.in_reply_to || '').toString();
+            const messageId = (body['Message-Id'] || body['message-id'] || body.message_id || '').toString();
+            const subject = (body.subject || body.Subject || '').toString();
+            const text = (body['stripped-text'] || body['stripped-text'] || body['body-plain'] || body['body'] || '').toString();
+            const fromEmail = (body.sender || body.From || body.from || '').toString();
+            const sentAt = (body['Date'] || body.timestamp || null);
+
+            if (!inReplyTo && !messageId) {
+                return res.status(200).json({ ok: true, processed: 0 });
+            }
+
+            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            initSchema(db);
+
+            // Prefer matching by In-Reply-To provider_message_id, fall back to Message-Id.
+            const replyKey = inReplyTo || messageId;
+            const rows = await db.query(
+                'SELECT * FROM email_logs WHERE provider = $1 AND provider_message_id = $2 LIMIT 1',
+                ['mailgun', replyKey]
+            );
+            const outboundLog = rows && rows[0] ? rows[0] : null;
+            if (!outboundLog) {
+                return res.status(200).json({ ok: true, processed: 0 });
+            }
+
+            await updateEmailLogStatus(db, outboundLog.id, 'replied');
+            await updateLead(db, outboundLog.lead_id, { status: STATUS.REPLIED });
+            await setEnrolmentStatusForLead(db, outboundLog.lead_id, 'replied');
+            await addLeadActivity(db, outboundLog.lead_id, 'email_replied', 'Inbound reply received');
+
+            await addEmailLog(db, {
+                lead_id: outboundLog.lead_id,
+                template_id: null,
+                brevo_message_id: null,
+                provider: 'mailgun',
+                provider_message_id: messageId || null,
+                direction: 'inbound',
+                status: 'replied',
+                subject: subject || null,
+                body: text.trim() || null,
+                from_email: fromEmail || null,
+                to_email: null,
+                sent_at: sentAt || null,
+            });
+
+            res.status(200).json({ ok: true, processed: 1 });
+        } catch (err) {
+            logger.error({ err }, 'Mailgun inbound webhook failed');
+            res.status(500).json({ error: 'Inbound webhook failed' });
+        }
+    });
+
     // ── Test endpoint: simulate Brevo webhook by leadId (no message-id lookup) ──
     app.post('/api/webhooks/brevo/test', validate(brevoWebhookTestSchema), async (req, res) => {
         try {
@@ -301,7 +407,7 @@ function mountEmailLogs(app) {
         }
     });
 
-    // ── Status: secret configured?, last webhook, event count ──
+    // ── Brevo status: secret configured?, last webhook, event count ──
     app.get('/api/webhooks/brevo/status', async (req, res) => {
         try {
             const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
@@ -317,6 +423,23 @@ function mountEmailLogs(app) {
             });
         } catch (err) {
             logger.error({ err }, 'Brevo webhook status failed');
+            res.status(500).json({ error: 'Failed to get status' });
+        }
+    });
+    // ── Mailgun status endpoint (minimal for now) ──
+    app.get('/api/webhooks/mailgun/status', async (req, res) => {
+        try {
+            const db = await getDb(process.env.DB_PATH || DEFAULT_DB_PATH);
+            initSchema(db);
+            const profile = await getProfile(db);
+            const lastAt = profile.mailgun_last_webhook_at || null;
+            const count = parseInt(profile.mailgun_webhook_count, 10) || 0;
+            res.json({
+                lastWebhookAt: lastAt,
+                webhookEventCount: count,
+            });
+        } catch (err) {
+            logger.error({ err }, 'Mailgun webhook status failed');
             res.status(500).json({ error: 'Failed to get status' });
         }
     });

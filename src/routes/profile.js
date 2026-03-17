@@ -17,6 +17,7 @@ const PROFILE_KEYS = [
     'salesforce_access_token', 'salesforce_instance_url',
     'webhook_url', 'webhook_score_threshold', 'team_members',
     'brevo_webhook_secret', 'brevo_api_key',
+    'mailgun_api_key', 'mailgun_signing_key', 'mailgun_domain', 'mailgun_region',
     'referral_link', 'sender_name', 'sender_email', 'daily_send_limit', 'send_delay_minutes',
     'queue_paused',
     'earnings_referral_pounds', 'earnings_conversion_rate_pct',
@@ -36,6 +37,10 @@ const ENV_KEY_MAP = {
     salesforce_instance_url: 'SALESFORCE_INSTANCE_URL',
     brevo_webhook_secret: 'BREVO_WEBHOOK_SECRET',
     brevo_api_key: 'BREVO_API_KEY',
+    mailgun_api_key: 'MAILGUN_API_KEY',
+    mailgun_signing_key: 'MAILGUN_SIGNING_KEY',
+    mailgun_domain: 'MAILGUN_DOMAIN',
+    mailgun_region: 'MAILGUN_REGION',
 };
 
 // POST /api/profile — accepts any combination of known profile keys
@@ -57,6 +62,10 @@ const profileUpdateSchema = z.object({
     lead_scoring_criteria: z.string().optional(),
     brevo_webhook_secret: z.string().optional(),
     brevo_api_key: z.string().optional(),
+    mailgun_api_key: z.string().optional(),
+    mailgun_signing_key: z.string().optional(),
+    mailgun_domain: z.string().optional(),
+    mailgun_region: z.string().optional(),
     referral_link: z.string().optional(),
     sender_name: z.string().optional(),
     sender_email: z.string().email().optional().or(z.literal('')),
