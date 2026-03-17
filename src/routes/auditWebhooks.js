@@ -114,15 +114,13 @@ const auditTestSchema = z.object({
 });
 
 function mountAuditWebhooks(app) {
-    // GitHub needs raw body for signature verification.
     app.post(
         '/api/webhooks/github',
-        express.raw({ type: 'application/json' }),
         verifyGitHubSignature,
         async (req, res) => {
             try {
                 const eventName = (req.header('x-github-event') || '').toString();
-                const payload = JSON.parse(req.body.toString('utf8') || '{}');
+                const payload = req.body && typeof req.body === 'object' ? req.body : {};
                 const evt = summarizeGitHubEvent(eventName, payload);
                 await sendAudit(evt);
                 res.json({ ok: true });
