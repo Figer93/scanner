@@ -125,7 +125,15 @@ function mountAuditWebhooks(app) {
                 await sendAudit(evt);
                 res.json({ ok: true });
             } catch (err) {
-                logger.error({ err }, 'GitHub webhook failed');
+                logger.error(
+                    {
+                        message: err?.message,
+                        stack: err?.stack,
+                        event: req.header('x-github-event') || '',
+                        bodyType: typeof req.body,
+                    },
+                    'GitHub webhook failed'
+                );
                 res.status(500).json({ error: 'Webhook failed' });
             }
         }
