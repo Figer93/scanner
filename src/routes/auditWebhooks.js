@@ -29,7 +29,12 @@ function verifyGitHubSignature(req, res, next) {
     const sig = (req.header('x-hub-signature-256') || '').toString();
     if (!sig.startsWith('sha256=')) return res.status(403).json({ error: 'Invalid signature' });
 
-    const raw = req.body; // Buffer from express.raw
+    // GitHub sends a raw JSON body; we want the exact bytes GitHub used.
+    // Because global JSON middleware runs before this route, req.body may already
+    // be an object. In that case, reconstruct the JSON string deterministically.
+    const raw = Buffer.isBuffer(req.body)
+        ? req.body
+        : Buffer.from(typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {}), 'utf8');
     const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(raw).digest('hex');
     if (!timingSafeEqualHex(sig, expected)) return res.status(403).json({ error: 'Invalid signature' });
     next();
