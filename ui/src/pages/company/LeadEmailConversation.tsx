@@ -2,11 +2,11 @@
  * Email conversation thread for a lead: sent + received messages and reply compose.
  */
 
-import { useCallback, useState } from 'react';
-import { Mail, Send } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Send } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/client';
-import { GlassCard, Button } from '../../components/ui';
+import { Button } from '../../components/ui';
 import { formatDateTime } from '../../lib/utils';
 
 interface EmailMessage {
@@ -32,6 +32,7 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
     const queryClient = useQueryClient();
     const [replySubject, setReplySubject] = useState('');
     const [replyBody, setReplyBody] = useState('');
+    const endRef = useRef<HTMLDivElement | null>(null);
 
     const { data: messages = [], isLoading } = useQuery<EmailMessage[]>({
         queryKey: ['email-logs', leadId],
@@ -61,97 +62,140 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
         sendReplyMutation.mutate({ subject, body });
     }, [replySubject, replyBody, sendReplyMutation]);
 
-    const thread = [...messages].reverse();
+    const thread = useMemo(() => {
+        const copy = Array.isArray(messages) ? [...messages] : [];
+        copy.sort((a, b) => Date.parse(a.sent_at) - Date.parse(b.sent_at));
+        return copy;
+    }, [messages]);
+
+    useEffect(() => {
+        // Keep the thread scrolled to the newest message.
+        endRef.current?.scrollIntoView({ block: 'end' });
+    }, [leadId, thread.length]);
+
+    useEffect(() => {
+        // Best-effort subject default to behave like a "reply" thread, but keep it editable.
+        if (replySubject.trim()) return;
+        const lastWithSubject = [...thread].reverse().find((m) => (m.subject || '').trim());
+        const base = (lastWithSubject?.subject || '').trim();
+        if (!base) return;
+        setReplySubject(base.toLowerCase().startsWith('re:') ? base : `Re: ${base}`);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [leadId, thread]);
 
     return (
-        <GlassCard className="p-5">
-            <h2 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Mail size={15} className="text-white/40" aria-hidden="true" />
-                Email conversation
-            </h2>
-
-            {isLoading ? (
-                <p className="text-sm text-white/50">Loading…</p>
-            ) : thread.length === 0 ? (
-                <p className="text-sm text-white/50 mb-4">
-                    No emails yet. Send a reply below to start the thread. To see replies from the contact here, set up the Brevo Inbound webhook in Profile → Email tracking.
-                </p>
-            ) : (
-                <div className="space-y-3 mb-4 max-h-[320px] overflow-y-auto">
-                    {thread.map((msg) => {
-                        const isOutbound = (msg.direction || '').toLowerCase() === 'outbound';
-                        return (
-                            <div
-                                key={msg.id}
-                                className={`rounded-inner p-3 text-sm border ${
-                                    isOutbound
-                                        ? 'bg-violet-500/10 border-violet-400/20 ml-4'
-                                        : 'bg-white/5 border-white/10 mr-4'
-                                }`}
-                            >
-                                <div className="flex flex-wrap items-center gap-2 mb-1">
-                                    <span className="text-xs font-medium text-white/70">
-                                        {isOutbound ? 'You' : (msg.from_email || 'Them')}
-                                    </span>
-                                    <span className="text-xs text-white/50">{formatDateTime(msg.sent_at)}</span>
-                                    {msg.status && msg.status !== 'sent' && (
-                                        <span className="text-xs text-white/40">· {msg.status}</span>
-                                    )}
+        <div className="h-full flex flex-col min-h-0">
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-2">
+                {isLoading ? (
+                    <p className="text-sm text-white/50">Loading…</p>
+                ) : thread.length === 0 ? (
+                    <div className="h-full flex items-center justify-center">
+                        <div className="text-center max-w-md">
+                            <p className="text-sm text-white/60">
+                                No emails yet. Send a message below to start the thread.
+                            </p>
+                            <p className="mt-2 text-xs text-white/40">
+                                To see inbound replies here, set up the Brevo Inbound webhook in Profile → Email tracking.
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {thread.map((msg) => {
+                            const isOutbound = (msg.direction || '').toLowerCase() === 'outbound';
+                            const displayName = isOutbound ? 'You' : (msg.from_email || 'Them');
+                            const body = (msg.body || '').trim() || '(no body)';
+                            return (
+                                <div key={msg.id} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[78%] ${isOutbound ? 'items-end' : 'items-start'} flex flex-col`}>
+                                        <div
+                                            className={`px-4 py-2.5 text-sm border shadow-sm ${
+                                                isOutbound
+                                                    ? 'bg-violet-500/25 border-violet-400/25 text-white rounded-2xl rounded-br-md'
+                                                    : 'bg-white/8 border-white/10 text-white/90 rounded-2xl rounded-bl-md'
+                                            }`}
+                                        >
+                                            {msg.subject && (
+                                                <div className="text-[11px] text-white/70 font-medium mb-1 truncate">
+                                                    {msg.subject}
+                                                </div>
+                                            )}
+                                            <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed">
+                                                {body}
+                                            </pre>
+                                        </div>
+                                        <div className={`mt-1 px-1 text-[11px] ${isOutbound ? 'text-white/45' : 'text-white/40'}`}>
+                                            <span>{displayName}</span>
+                                            <span className="mx-1">·</span>
+                                            <span>{formatDateTime(msg.sent_at)}</span>
+                                            {msg.status && msg.status !== 'sent' && (
+                                                <>
+                                                    <span className="mx-1">·</span>
+                                                    <span className="text-white/35">{msg.status}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                                {msg.subject && (
-                                    <p className="text-xs font-medium text-white/80 mb-1">Re: {msg.subject}</p>
-                                )}
-                                <pre className="text-xs text-white/80 whitespace-pre-wrap break-words font-sans mt-1">
-                                    {msg.body || '(no body)'}
-                                </pre>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            <div className="pt-3 border-t border-white/10 space-y-2">
-                <label htmlFor="reply-subject" className="block text-xs font-medium text-white/70">
-                    Subject
-                </label>
-                <input
-                    id="reply-subject"
-                    type="text"
-                    value={replySubject}
-                    onChange={(e) => setReplySubject(e.target.value)}
-                    placeholder="Re: …"
-                    className="w-full px-3 py-2 rounded-inner bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-[var(--color-border-active)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-active)] text-sm"
-                    disabled={sendReplyMutation.isPending}
-                />
-                <label htmlFor="reply-body" className="block text-xs font-medium text-white/70">
-                    Message
-                </label>
-                <textarea
-                    id="reply-body"
-                    value={replyBody}
-                    onChange={(e) => setReplyBody(e.target.value)}
-                    placeholder="Type your reply…"
-                    rows={4}
-                    className="w-full px-3 py-2 rounded-inner bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-[var(--color-border-active)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-active)] text-sm resize-y min-h-[80px]"
-                    disabled={sendReplyMutation.isPending}
-                />
-                <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleSendReply}
-                    disabled={!replySubject.trim() || !replyBody.trim() || sendReplyMutation.isPending}
-                    aria-label="Send reply"
-                >
-                    <Send size={14} className="mr-1" aria-hidden="true" />
-                    {sendReplyMutation.isPending ? 'Sending…' : 'Send reply'}
-                </Button>
-                {sendReplyMutation.isError && (
-                    <p className="text-xs text-red-300" role="alert">
-                        {sendReplyMutation.error instanceof Error ? sendReplyMutation.error.message : 'Send failed'}
-                    </p>
+                            );
+                        })}
+                        <div ref={endRef} />
+                    </>
                 )}
-                <p className="text-xs text-white/40">To: {leadEmail}</p>
             </div>
-        </GlassCard>
+
+            <div className="border-t border-white/10 bg-slate-950/60 px-5 py-4">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="text-xs text-white/45 truncate">
+                        To: <span className="text-white/70">{leadEmail}</span>
+                    </div>
+                </div>
+
+                <div className="grid gap-2">
+                    <input
+                        id="reply-subject"
+                        type="text"
+                        value={replySubject}
+                        onChange={(e) => setReplySubject(e.target.value)}
+                        placeholder="Subject (required for email)…"
+                        className="w-full px-3 py-2 rounded-inner bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-[var(--color-border-active)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-active)] text-sm"
+                        disabled={sendReplyMutation.isPending}
+                    />
+                    <div className="flex items-end gap-2">
+                        <textarea
+                            id="reply-body"
+                            value={replyBody}
+                            onChange={(e) => setReplyBody(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                    e.preventDefault();
+                                    handleSendReply();
+                                }
+                            }}
+                            placeholder="Message… (Ctrl+Enter to send)"
+                            rows={2}
+                            className="flex-1 px-3 py-2 rounded-inner bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-[var(--color-border-active)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-active)] text-sm resize-none min-h-[44px] max-h-[140px] overflow-y-auto"
+                            disabled={sendReplyMutation.isPending}
+                        />
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={handleSendReply}
+                            disabled={!replySubject.trim() || !replyBody.trim() || sendReplyMutation.isPending}
+                            aria-label="Send message"
+                            className="shrink-0"
+                        >
+                            <Send size={14} className="mr-1" aria-hidden="true" />
+                            {sendReplyMutation.isPending ? 'Sending…' : 'Send'}
+                        </Button>
+                    </div>
+                    {sendReplyMutation.isError && (
+                        <p className="text-xs text-red-300" role="alert">
+                            {sendReplyMutation.error instanceof Error ? sendReplyMutation.error.message : 'Send failed'}
+                        </p>
+                    )}
+                </div>
+            </div>
+        </div>
     );
 }
