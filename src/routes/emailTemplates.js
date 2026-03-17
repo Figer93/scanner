@@ -191,6 +191,10 @@ function mountEmailTemplates(app) {
             const htmlContent = body && /<[a-z][\s\S]*>/i.test(body) ? body : null;
             const textContent = htmlContent ? null : (body || '');
 
+            const senderEmailEnv = (process.env.MAILGUN_SENDER_EMAIL || '').trim();
+            const mailgunFrom =
+                senderEmailEnv ? `Mailgun Sandbox <${senderEmailEnv}>` : senderEmailEnv;
+
             const sendResult = await sendMailgunEmail({
                 to: toEmail.trim(),
                 subject: subject || '(No subject)',
@@ -205,6 +209,8 @@ function mountEmailTemplates(app) {
                 logger.warn({ error: sendResult.error }, 'Mailgun send-to-lead rejected');
                 return res.status(502).json({ error: sendResult.error || 'Send failed' });
             }
+
+            const senderEmail = mailgunFrom || senderEmailEnv || null;
 
             addEmailLog(db, {
                 lead_id: leadId,

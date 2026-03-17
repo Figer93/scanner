@@ -273,6 +273,10 @@ function mountLeadsCrud(app) {
             const profile = await getProfile(db);
             const htmlContent = body && /<[a-z][\s\S]*>/i.test(body) ? body : null;
             const textContent = htmlContent ? null : body;
+
+            const senderEmailEnv = (process.env.MAILGUN_SENDER_EMAIL || '').trim();
+            const mailgunFrom =
+                senderEmailEnv ? `Mailgun Sandbox <${senderEmailEnv}>` : senderEmailEnv;
             const sendResult = await sendMailgunEmail({
                 to: toEmail.trim(),
                 subject,
@@ -286,6 +290,9 @@ function mountLeadsCrud(app) {
                 logger.warn({ error: sendResult.error }, 'Send-reply Mailgun rejected');
                 return res.status(502).json({ error: sendResult.error || 'Send reply failed' });
             }
+
+            const senderEmail = mailgunFrom || senderEmailEnv || null;
+
             await addEmailLog(db, {
                 lead_id: id,
                 template_id: null,
