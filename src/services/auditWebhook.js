@@ -16,6 +16,11 @@ function safeJson(value, max = 1800) {
     }
 }
 
+function truncateSlackText(value) {
+    // Slack incoming webhooks have practical message size limits; keep a safe ceiling.
+    return truncate(value, 3900);
+}
+
 /**
  * Sends a structured audit message to Slack Incoming Webhook.
  *
@@ -33,6 +38,10 @@ function safeJson(value, max = 1800) {
 async function sendAudit(evt) {
     const url = (process.env.AUDIT_WEBHOOK_URL || '').trim();
     if (!url) return;
+
+    if (!/^https:\/\/hooks\.slack\.com\/services\//i.test(url)) {
+        logger.warn({ url: url.slice(0, 48) + '…' }, 'AUDIT_WEBHOOK_URL does not look like a Slack Incoming Webhook URL');
+    }
 
     const requestId = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(16).toString('hex');
     const ts = new Date().toISOString();
@@ -62,12 +71,28 @@ async function sendAudit(evt) {
         details.push(`*After:* ${safeJson(evt.after, 1200)}`);
     }
 
-    const text = lines.join('\n') + (details.length ? `\n\n${details.join('\n')}` : '');
+    const text = truncateSlackText(lines.join('\n') + (details.length ? `\n\n${details.join('\n')}` : ''));
 
     try {
-        await axios.post(url, { text }, { timeout: 10_000, validateStatus: () => true });
+        const res = await axios.post(
+            url,
+            { text },
+            {
+                timeout: 10_000,
+                validateStatus: () => true,
+                headers: { 'Content-Type': 'application/json' },
+            }
+        );
+        const body = typeof res.data === 'string' ? res.data : safeJson(res.data, 400);
+        // Slack incoming webhooks typically respond with HTTP 200 and body "ok".
+        if (res.status < 200 || res.status >= 300 || (typeof res.data === 'string' && res.data.trim().toLowerCase() !== 'ok')) {
+            logger.warn(
+                { status: res.status, body },
+                'Slack audit webhook rejected request'
+            );
+        }
     } catch (err) {
-        logger.warn({ err: err?.message }, 'Slack audit webhook failed');
+        logger.warn({ err: err?.message }, 'Slack audit webhook request failed');
     }
 }
 
