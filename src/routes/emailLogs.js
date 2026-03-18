@@ -15,6 +15,8 @@
 
 const { z } = require('zod');
 const crypto = require('crypto');
+const express = require('express');
+const multer = require('multer');
 const {
     getDb, initSchema, getEmailLogs, getEmailLogByBrevoMessageId, updateEmailLogStatus,
     addEmailLog, updateLead, getProfile, setProfileKey, addLeadActivity, setEnrolmentStatusForLead,
@@ -73,6 +75,53 @@ function normalizeMessageId(value) {
     const s = value.trim();
     if (s.startsWith('<') && s.endsWith('>')) return s.slice(1, -1).trim();
     return s;
+}
+
+/** Best-effort extract an email from "Name <email@x>" */
+function extractEmailAddress(input) {
+    if (!input) return '';
+    const s = String(input).trim();
+    const m = s.match(/<([^>]+)>/);
+    return (m && m[1] ? m[1] : s).trim();
+}
+
+function makeMailgunBodyParser() {
+    const parseUrlencoded = express.urlencoded({ extended: false });
+    const parseMultipart = multer().none();
+
+    return function mailgunBodyParser(req, res, next) {
+        const type = (req.headers['content-type'] || '').toString().toLowerCase();
+        if (type.includes('multipart/form-data')) {
+            return parseMultipart(req, res, next);
+        }
+        if (type.includes('application/x-www-form-urlencoded')) {
+            return parseUrlencoded(req, res, next);
+        }
+        // Fallback: allow JSON (already parsed by app-level express.json()) and unknown types
+        return next();
+    };
+}
+
+async function getEmailLogByMailgunMessageIdFlexible(db, messageId) {
+    if (!messageId || !String(messageId).trim()) return null;
+    const raw = String(messageId).trim();
+    const normalized = normalizeMessageId(raw);
+
+    const candidates = [
+        raw,
+        normalized,
+        normalized ? `<${normalized}>` : null,
+        raw.startsWith('<') ? raw.slice(1) : null,
+    ].filter(Boolean);
+
+    for (const id of candidates) {
+        const rows = await db.query(
+            'SELECT * FROM email_logs WHERE provider = $1 AND provider_message_id = $2 LIMIT 1',
+            ['mailgun', id]
+        );
+        if (rows && rows[0]) return rows[0];
+    }
+    return null;
 }
 
 /** Find email log by brevo_message_id, trying raw and normalized form (with/without angle brackets). */
@@ -145,6 +194,8 @@ async function recordMailgunWebhookReceived(db) {
 // ── Route handlers ───────────────────────────────────────────
 
 function mountEmailLogs(app) {
+    const mailgunBodyParser = makeMailgunBodyParser();
+
     app.get('/api/email-logs', validateQuery(emailLogsQuerySchema), async (req, res) => {
         try {
             const db = await getDb();
@@ -278,7 +329,7 @@ function mountEmailLogs(app) {
     // ── Mailgun webhooks: events + inbound replies ──
 
     // POST /api/webhooks/mailgun/events — delivered/open/click/bounce
-    app.post('/api/webhooks/mailgun/events', async (req, res) => {
+    app.post('/api/webhooks/mailgun/events', mailgunBodyParser, async (req, res) => {
         try {
             const db = await getDb();
             initSchema(db);
@@ -327,14 +378,14 @@ function mountEmailLogs(app) {
     });
 
     // POST /api/webhooks/mailgun/inbound — inbound Route replies
-    app.post('/api/webhooks/mailgun/inbound', async (req, res) => {
+    app.post('/api/webhooks/mailgun/inbound', mailgunBodyParser, async (req, res) => {
         try {
             const body = req.body || {};
-            const inReplyTo = (body['In-Reply-To'] || body['in-reply-to'] || body.in_reply_to || '').toString();
-            const messageId = (body['Message-Id'] || body['message-id'] || body.message_id || '').toString();
+            const inReplyTo = (body['In-Reply-To'] || body['in-reply-to'] || body.in_reply_to || body['In-Reply-To:'] || '').toString();
+            const messageId = (body['Message-Id'] || body['message-id'] || body.message_id || body['Message-Id:'] || '').toString();
             const subject = (body.subject || body.Subject || '').toString();
-            const text = (body['stripped-text'] || body['stripped-text'] || body['body-plain'] || body['body'] || '').toString();
-            const fromEmail = (body.sender || body.From || body.from || '').toString();
+            const text = (body['stripped-text'] || body['body-plain'] || body['body'] || '').toString();
+            const fromEmail = extractEmailAddress(body.sender || body.From || body.from || '');
             const sentAt = (body['Date'] || body.timestamp || null);
 
             if (!inReplyTo && !messageId) {
@@ -346,11 +397,7 @@ function mountEmailLogs(app) {
 
             // Prefer matching by In-Reply-To provider_message_id, fall back to Message-Id.
             const replyKey = inReplyTo || messageId;
-            const rows = await db.query(
-                'SELECT * FROM email_logs WHERE provider = $1 AND provider_message_id = $2 LIMIT 1',
-                ['mailgun', replyKey]
-            );
-            const outboundLog = rows && rows[0] ? rows[0] : null;
+            const outboundLog = await getEmailLogByMailgunMessageIdFlexible(db, replyKey);
             if (!outboundLog) {
                 return res.status(200).json({ ok: true, processed: 0 });
             }
