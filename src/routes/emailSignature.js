@@ -183,10 +183,10 @@ const socialLinkSchema = z.object({
 });
 
 const signatureUpsertSchema = z.object({
-    full_name: z.string().optional().default('').transform((s) => s.trim()).max(120),
-    job_title: z.string().optional().default('').transform((s) => s.trim()).max(120),
-    company_name: z.string().optional().default('').transform((s) => s.trim()).max(160),
-    phone: z.string().optional().default('').transform((s) => s.trim()).max(60),
+    full_name: z.string().max(120).optional().default('').transform((s) => s.trim()),
+    job_title: z.string().max(120).optional().default('').transform((s) => s.trim()),
+    company_name: z.string().max(160).optional().default('').transform((s) => s.trim()),
+    phone: z.string().max(60).optional().default('').transform((s) => s.trim()),
     email: z.string()
         .optional()
         .default('')
@@ -201,7 +201,7 @@ const signatureUpsertSchema = z.object({
             return false;
         }
     }, { message: 'Website must be a valid http(s) URL' }),
-    address: z.string().optional().default('').transform((s) => s.trim()).max(600),
+    address: z.string().max(600).optional().default('').transform((s) => s.trim()),
     logo_data_url: z.string()
         .optional()
         .default('')
@@ -211,7 +211,7 @@ const signatureUpsertSchema = z.object({
             return v.length <= 500_000 && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(v);
         }, { message: 'Logo must be a data:image/*;base64* URL and <= 500KB' }),
     social_links: z.array(socialLinkSchema).optional().default([]),
-    disclaimer: z.string().optional().default('').transform((s) => s.trim()).max(900),
+    disclaimer: z.string().max(900).optional().default('').transform((s) => s.trim()),
 }).strict();
 
 function normaliseSignaturePayload(payload) {
