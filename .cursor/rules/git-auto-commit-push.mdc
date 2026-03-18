@@ -1,0 +1,32 @@
+---
+description: Auto commit + push after each completed change
+alwaysApply: true
+---
+
+# Git workflow (CHScanner)
+
+When the user requests a code change/fix and the implementation is complete:
+
+- **Commit and push by default**: stage only relevant files, create a Conventional Commit message (`fix:`, `feat:`, `refactor:`, `docs:`, `chore:`), then `git push` to the current branch (default `main`) **without asking**.
+- **Opt-out**: if the user explicitly says not to commit/push (e.g. "don't push yet", "just show me the diff"), do not commit/push.
+- **Safety**:
+  - Never use `--no-verify`, `--amend`, `push --force`, or history-rewriting commands unless the user explicitly requests it.
+  - If there are unrelated/unwanted changes present, do not include them; either leave them unstaged or split into separate commits that match user intent.
+  - If `git push` requires interactive auth, surface the exact error/output and propose the non-interactive next step.
+
+---
+description: Auto commit + push after each completed change
+alwaysApply: true
+---
+
+# Git workflow (CHScanner)
+
+When the user requests a code change/fix and the implementation is complete:
+
+- **Commit and push by default**: stage only relevant files, create a Conventional Commit message (`fix:`, `feat:`, `refactor:`, `docs:`, `chore:`), then `git push` to the current branch (default is `main`) **without asking**.
+- **Opt-out**: if the user explicitly says not to commit/push (e.g. "don't push yet", "just show me the diff"), do not commit/push.
+- **Safety**:
+  - Never use `--no-verify`, `--amend`, `push --force`, or history-rewriting commands unless the user explicitly requests it.
+  - If there are unrelated/unwanted changes present, do not include them; either leave them unstaged or split into separate commits that match user intent.
+  - If `git push` requires interactive auth, surface the exact error/output and propose the non-interactive next step.
+
