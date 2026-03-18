@@ -272,6 +272,7 @@ function mountLeadsCrud(app) {
         const { id } = req.params;
         const subject = (req.body.subject || '').trim();
         const body = (req.body.body || '').trim();
+        const inReplyToMessageId = req.body.inReplyToMessageId != null ? String(req.body.inReplyToMessageId).trim() : '';
         try {
             const db = await getDb();
             initSchema(db);
@@ -295,6 +296,10 @@ function mountLeadsCrud(app) {
                 html: htmlContent,
                 tags: ['lead_reply'],
                 variables: { leadId: id },
+                headers: inReplyToMessageId ? {
+                    'In-Reply-To': inReplyToMessageId,
+                    References: inReplyToMessageId,
+                } : undefined,
                 profileOverride: profile,
             });
             if (!sendResult.ok) {

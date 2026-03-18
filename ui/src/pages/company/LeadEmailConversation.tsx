@@ -3,7 +3,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Send } from 'lucide-react';
+import { CornerUpLeft, Send } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/client';
 import { Button } from '../../components/ui';
@@ -21,6 +21,8 @@ interface EmailMessage {
     to_email: string | null;
     company_name?: string;
     matched_via?: string | null;
+    provider_message_id?: string | null;
+    brevo_message_id?: string | null;
 }
 
 interface LeadEmailConversationProps {
@@ -33,6 +35,7 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
     const queryClient = useQueryClient();
     const [replySubject, setReplySubject] = useState('');
     const [replyBody, setReplyBody] = useState('');
+    const [replyInReplyToMessageId, setReplyInReplyToMessageId] = useState<string | null>(null);
     const threadViewportRef = useRef<HTMLDivElement | null>(null);
     const lastLeadIdRef = useRef<number | null>(null);
 
@@ -48,13 +51,14 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
     });
 
     const sendReplyMutation = useMutation({
-        mutationFn: (payload: { subject: string; body: string }) =>
+        mutationFn: (payload: { subject: string; body: string; inReplyToMessageId?: string }) =>
             api.post(`/api/leads/${leadId}/send-reply`, payload),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['email-logs', leadId] });
             void queryClient.invalidateQueries({ queryKey: ['email-logs'] });
             setReplySubject('');
             setReplyBody('');
+            setReplyInReplyToMessageId(null);
             onSent?.();
         },
     });
@@ -63,8 +67,20 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
         const subject = replySubject.trim();
         const body = replyBody.trim();
         if (!subject || !body) return;
-        sendReplyMutation.mutate({ subject, body });
-    }, [replySubject, replyBody, sendReplyMutation]);
+        sendReplyMutation.mutate({ subject, body, inReplyToMessageId: replyInReplyToMessageId || undefined });
+    }, [replySubject, replyBody, replyInReplyToMessageId, sendReplyMutation]);
+
+    const handleReplyToMessage = useCallback((msg: EmailMessage) => {
+        const messageId = msg.provider_message_id || msg.brevo_message_id || null;
+        setReplyInReplyToMessageId(messageId);
+
+        const subj = (msg.subject || '').trim();
+        if (!subj) {
+            setReplySubject('No subject (CHScanner)');
+            return;
+        }
+        setReplySubject(subj.toLowerCase().startsWith('re:') ? subj : `Re: ${subj}`);
+    }, []);
 
     const thread = useMemo(() => {
         const copy = Array.isArray(messages) ? [...messages] : [];
@@ -156,6 +172,17 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
                                                     <span className="mx-1">·</span>
                                                     <span className="text-white/35">{msg.status}</span>
                                                 </>
+                                            )}
+                                            {!isOutbound && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleReplyToMessage(msg)}
+                                                    className="ml-2 inline-flex items-center gap-1 text-[11px] text-white/55 hover:text-white/80 underline"
+                                                    aria-label="Reply to this message"
+                                                >
+                                                    <CornerUpLeft size={12} aria-hidden="true" />
+                                                    Reply
+                                                </button>
                                             )}
                                         </div>
                                     </div>

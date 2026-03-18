@@ -77,6 +77,11 @@ If you want **email replies** to appear in **Outreach → Conversations**, confi
   - Send a new outbound email from the app, then click **Reply** in your email client.
   - The reply should create an inbound message in the thread and set the lead to **Replied**.
 
+- **4. Direct inbound emails (no reply headers)**
+  - If a customer sends an email that is NOT a reply (no `In-Reply-To` / `Message-Id` match to a previous outbound message), CHScanner will try to correlate it by the sender email address to a lead in `leads.emails`.
+  - If a lead match is found, the email will be inserted as an inbound `email_logs` row so it appears in **Outreach → Conversations**.
+  - These messages are labeled as `Direct message` in the thread UI (stored in `email_logs.matched_via = sender_fallback`).
+
 ### Outreach tracking model (Sent / Opened / Replied / Converted)
 
 CHScanner tracks outreach performance using **one-time milestone timestamps per lead** (to avoid double-counting when you send multiple emails or have long reply threads).

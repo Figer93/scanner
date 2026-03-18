@@ -75,6 +75,9 @@ const sendEmailSchema = z.object({
 const sendReplySchema = z.object({
     subject: z.string().min(1, 'Subject is required'),
     body: z.string().min(1, 'Body is required'),
+    // Optional email-threading header value so the outbound reply can
+    // reference the message being replied to.
+    inReplyToMessageId: z.string().optional(),
 });
 
 /**
