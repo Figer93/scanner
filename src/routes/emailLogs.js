@@ -92,10 +92,22 @@ function makeMailgunBodyParser() {
     return function mailgunBodyParser(req, res, next) {
         const type = (req.headers['content-type'] || '').toString().toLowerCase();
         if (type.includes('multipart/form-data')) {
-            return parseMultipart(req, res, next);
+            return parseMultipart(req, res, (err) => {
+                if (err) {
+                    logger.error({ err, type }, 'Mailgun webhook body parse failed (multipart)');
+                    return res.status(200).json({ ok: true, processed: 0 });
+                }
+                return next();
+            });
         }
         if (type.includes('application/x-www-form-urlencoded')) {
-            return parseUrlencoded(req, res, next);
+            return parseUrlencoded(req, res, (err) => {
+                if (err) {
+                    logger.error({ err, type }, 'Mailgun webhook body parse failed (urlencoded)');
+                    return res.status(200).json({ ok: true, processed: 0 });
+                }
+                return next();
+            });
         }
         // Fallback: allow JSON (already parsed by app-level express.json()) and unknown types
         return next();

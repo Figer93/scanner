@@ -42,12 +42,27 @@ async function deleteEmailTemplate(db, id) {
 async function addEmailLog(db, log) {
     const sentAt = log.sent_at != null ? String(log.sent_at).trim() : null;
     const { id } = await db.runReturningId(
-        `INSERT INTO email_logs (lead_id, template_id, brevo_message_id, direction, status, subject, body, from_email, to_email, sent_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, CURRENT_TIMESTAMP)) RETURNING id`,
+        `INSERT INTO email_logs (
+            lead_id,
+            template_id,
+            brevo_message_id,
+            provider,
+            provider_message_id,
+            direction,
+            status,
+            subject,
+            body,
+            from_email,
+            to_email,
+            sent_at
+        )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12, CURRENT_TIMESTAMP)) RETURNING id`,
         [
             log.lead_id,
             log.template_id ?? null,
             log.brevo_message_id ?? null,
+            log.provider ?? null,
+            log.provider_message_id ?? null,
             log.direction ?? 'outbound',
             log.status ?? 'sent',
             log.subject ?? null,
@@ -62,7 +77,7 @@ async function addEmailLog(db, log) {
 
 async function getEmailLogs(db, options = {}) {
     const limit = Math.min(200, Math.max(1, options.limit || 50));
-    let sql = `SELECT el.id, el.lead_id, el.template_id, el.brevo_message_id, el.direction, el.status, el.sent_at, el.updated_at,
+    let sql = `SELECT el.id, el.lead_id, el.template_id, el.brevo_message_id, el.provider, el.provider_message_id, el.direction, el.status, el.sent_at, el.updated_at,
                el.subject, el.body, el.from_email, el.to_email,
                l.company_name, l.company_number FROM email_logs el
                LEFT JOIN leads l ON l.id = el.lead_id WHERE 1=1`;
