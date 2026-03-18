@@ -8,7 +8,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../api/client';
 import { Button } from '../../components/ui';
 import { formatDateTime } from '../../lib/utils';
-import { useEmailSignature } from '../../hooks/useEmailSignature';
 
 interface EmailMessage {
     id: number;
@@ -32,12 +31,11 @@ interface LeadEmailConversationProps {
     onSent?: () => void;
 }
 
-const SIGNATURE_SENTINEL = '<!--CHSCANNER_SIGNATURE_V1-->';
-
 export default function LeadEmailConversation({ leadId, leadEmail, onSent }: LeadEmailConversationProps) {
     const queryClient = useQueryClient();
     const [replySubject, setReplySubject] = useState('');
     const [replyBody, setReplyBody] = useState('');
+    const [includeSignature, setIncludeSignature] = useState<boolean>(true);
     const [replyInReplyToMessageId, setReplyInReplyToMessageId] = useState<string | null>(null);
     const [threadMessages, setThreadMessages] = useState<EmailMessage[]>([]);
     const threadViewportRef = useRef<HTMLDivElement | null>(null);
@@ -65,23 +63,13 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
         setThreadMessages([]);
     }, [leadId]);
 
-    const { data: signatureData } = useEmailSignature();
-    const signatureHtml = signatureData?.signature_html || '';
-
-    const handleInsertSignature = useCallback(() => {
-        if (!signatureHtml) return;
-        setReplyBody((prev) => {
-            if (prev.includes(SIGNATURE_SENTINEL)) return prev;
-            const trimmed = prev.trimEnd();
-            if (!trimmed) {
-                return `${SIGNATURE_SENTINEL}\n${signatureHtml}\n${SIGNATURE_SENTINEL}\n`;
-            }
-            return `${trimmed}\n${SIGNATURE_SENTINEL}\n${signatureHtml}\n${SIGNATURE_SENTINEL}\n`;
-        });
-    }, [signatureHtml]);
-
     const sendReplyMutation = useMutation({
-        mutationFn: (payload: { subject: string; body: string; inReplyToMessageId?: string }) =>
+        mutationFn: (payload: {
+            subject: string;
+            body: string;
+            includeSignature?: boolean;
+            inReplyToMessageId?: string;
+        }) =>
             api.post(`/api/leads/${leadId}/send-reply`, payload),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: ['email-logs', leadId] });
@@ -97,8 +85,13 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
         const subject = replySubject.trim();
         const body = replyBody.trim();
         if (!subject || !body) return;
-        sendReplyMutation.mutate({ subject, body, inReplyToMessageId: replyInReplyToMessageId || undefined });
-    }, [replySubject, replyBody, replyInReplyToMessageId, sendReplyMutation]);
+        sendReplyMutation.mutate({
+            subject,
+            body,
+            includeSignature,
+            inReplyToMessageId: replyInReplyToMessageId || undefined,
+        });
+    }, [replySubject, replyBody, replyInReplyToMessageId, includeSignature, sendReplyMutation]);
 
     const handleReplyToMessage = useCallback((msg: EmailMessage) => {
         const messageId = msg.provider_message_id || msg.brevo_message_id || null;
@@ -246,17 +239,17 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
                         className="w-full px-3 py-2 rounded-inner bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-[var(--color-border-active)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-active)] text-sm"
                         disabled={sendReplyMutation.isPending}
                     />
-                    <div className="flex items-center justify-end">
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={handleInsertSignature}
-                            disabled={!signatureHtml || replyBody.includes(SIGNATURE_SENTINEL) || sendReplyMutation.isPending}
-                            aria-label="Insert signature into message"
-                        >
-                            Insert signature
-                        </Button>
-                    </div>
+                    <label className="flex items-center justify-between gap-3 text-xs text-white/70">
+                        <span>Include my signature</span>
+                        <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded border-white/20 bg-white/5 text-indigo-500 focus-visible:ring-2 focus-visible:ring-[var(--color-accent-primary)]"
+                            checked={includeSignature}
+                            onChange={(e) => setIncludeSignature(e.target.checked)}
+                            disabled={sendReplyMutation.isPending}
+                            aria-label="Include signature when sending reply"
+                        />
+                    </label>
                     <div className="flex items-end gap-2">
                         <textarea
                             id="reply-body"

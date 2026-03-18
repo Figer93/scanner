@@ -28,12 +28,14 @@ const signatureFormSchema = z.object({
         .refine((v) => {
             if (!v) return true;
             try {
-                const parsed = new URL(v);
+                const raw = String(v).trim();
+                const candidate = /^(https?:)?\/\//i.test(raw) ? raw : `https://${raw}`;
+                const parsed = new URL(candidate);
                 return parsed.protocol === 'http:' || parsed.protocol === 'https:';
             } catch {
                 return false;
             }
-        }, { message: 'Website must be a valid http(s) URL' }),
+        }, { message: 'Website must be a valid domain or http(s) URL' }),
     address: z.string().trim().max(600).default(''),
     logo_data_url: z
         .string()
@@ -52,7 +54,8 @@ const signatureFormSchema = z.object({
             const url = String(val.url ?? '').trim();
             if (!url) return;
             try {
-                const parsed = new URL(url);
+                const candidate = /^(https?:)?\/\//i.test(url) ? url : `https://${url}`;
+                const parsed = new URL(candidate);
                 if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
                     ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Social URL must be http(s)' });
                 }

@@ -25,7 +25,9 @@ function escapeHtml(input) {
 
 function sanitizeUrl(raw) {
     try {
-        const url = new URL(String(raw || '').trim());
+        const rawStr = String(raw || '').trim();
+        const candidate = /^(https?:)?\/\//i.test(rawStr) ? rawStr : `https://${rawStr}`;
+        const url = new URL(candidate);
         if (!['http:', 'https:'].includes(url.protocol)) return '';
         return url.toString();
     } catch {
@@ -66,10 +68,14 @@ function generateSignatureHtml(sig) {
         ? `<img src="${escapeHtml(logoDataUrl)}" alt="Logo" style="width:54px;height:54px;border-radius:16px;object-fit:cover;display:block;" />`
         : '';
 
+    const greetingHtml = fullName
+        ? `<div style="font-family:'Brush Script MT','Segoe Script',cursive;font-size:22px;line-height:1.1;color:#0f172a;margin-bottom:4px;">Kind regards,</div>`
+        : '';
+
     const nameBlockParts = [
-        fullName ? `<div style="font-size:14px;font-weight:700;line-height:1.2;color:#0f172a;">${escapeHtml(fullName)}</div>` : '',
-        jobTitle ? `<div style="font-size:12.5px;line-height:1.2;color:#334155;font-weight:600;margin-top:2px;">${escapeHtml(jobTitle)}</div>` : '',
-        companyName ? `<div style="font-size:12.5px;line-height:1.2;color:#334155;margin-top:2px;">${escapeHtml(companyName)}</div>` : '',
+        fullName ? `<div style="font-size:16px;font-weight:800;line-height:1.15;color:#0f172a;letter-spacing:-0.1px;">${escapeHtml(fullName)}</div>` : '',
+        jobTitle ? `<div style="font-size:12.8px;line-height:1.2;color:#4f46e5;font-weight:700;margin-top:2px;">${escapeHtml(jobTitle)}</div>` : '',
+        companyName ? `<div style="font-size:12.8px;line-height:1.2;color:#334155;margin-top:2px;font-weight:600;">${escapeHtml(companyName)}</div>` : '',
     ].filter(Boolean);
 
     const contactLines = [];
@@ -86,19 +92,33 @@ function generateSignatureHtml(sig) {
         .map((s) => ({ label: sanitizeOptionalText(s.label, 32), url: sanitizeUrl(s.url) }))
         .filter((s) => !!s.url);
 
+    const getSocialButtonBg = (label) => {
+        const l = String(label || '').toLowerCase();
+        if (l.includes('facebook')) return '#1877F2';
+        if (l.includes('linkedin')) return '#0A66C2';
+        if (l.includes('instagram')) return '#E1306C';
+        if (l.includes('twitter') || l.includes('x')) return '#111827';
+        return '#4F46E5';
+    };
+
     const socialsHtml = socialsFiltered.length > 0
         ? `
-            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-                ${socialsFiltered.map((s) => `
-                    <a href="${escapeHtml(s.url)}" style="font-size:12.5px;color:#0f172a;text-decoration:none;font-weight:600;">
-                        ${escapeHtml(s.label || 'Link')}
-                    </a>
-                `).join('')}
+            <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+                ${socialsFiltered.map((s) => {
+                    const bg = getSocialButtonBg(s.label);
+                    return `
+                        <a href="${escapeHtml(s.url)}"
+                           style="background:${bg};color:#ffffff;text-decoration:none;font-weight:800;font-size:12.5px;padding:10px 14px;border-radius:7px;display:inline-block;">
+                            ${escapeHtml(s.label || 'Connect')}
+                        </a>
+                    `;
+                }).join('')}
             </div>
         `
         : '';
 
     const rightMain = [
+        greetingHtml,
         nameBlockParts.join(''),
         contactLines.join(''),
         addressBlock,
@@ -173,7 +193,8 @@ const socialLinkSchema = z.object({
     const url = String(val.url ?? '').trim();
     if (!url) return;
     try {
-        const parsed = new URL(url);
+        const candidate = /^(https?:)?\/\//i.test(url) ? url : `https://${url}`;
+        const parsed = new URL(candidate);
         if (!['http:', 'https:'].includes(parsed.protocol)) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Social URL must be http(s)' });
         }
@@ -195,7 +216,8 @@ const signatureUpsertSchema = z.object({
     website: z.string().optional().default('').transform((s) => s.trim()).refine((v) => {
         if (!v) return true;
         try {
-            const parsed = new URL(v);
+            const candidate = /^(https?:)?\/\//i.test(v) ? v : `https://${v}`;
+            const parsed = new URL(candidate);
             return ['http:', 'https:'].includes(parsed.protocol);
         } catch {
             return false;

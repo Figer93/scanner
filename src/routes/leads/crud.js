@@ -29,6 +29,12 @@ const { validate, validateQuery, validateParams } = require('../../middleware/va
 const logger = require('../../lib/logger');
 const { sendMailgunEmail } = require('../../services/mailgun');
 const {
+    parseSignatureJson,
+    normaliseSignaturePayload,
+    generateSignatureHtml,
+    generateSignatureText,
+} = require('../emailSignature');
+const {
     leadIdParamsSchema,
     companyNumberParamsSchema,
     leadsQuerySchema,
@@ -273,6 +279,7 @@ function mountLeadsCrud(app) {
         const subject = (req.body.subject || '').trim();
         const body = (req.body.body || '').trim();
         const inReplyToMessageId = req.body.inReplyToMessageId != null ? String(req.body.inReplyToMessageId).trim() : '';
+        const includeSignature = req.body.includeSignature !== false;
         try {
             const db = await getDb();
             initSchema(db);
@@ -283,8 +290,71 @@ function mountLeadsCrud(app) {
                 return res.status(400).json({ error: 'Lead has no contact email. Add or edit the contact email first.' });
             }
             const profile = await getProfile(db);
-            const htmlContent = body && /<[a-z][\s\S]*>/i.test(body) ? body : null;
-            const textContent = htmlContent ? null : body;
+
+            const escapeHtml = (input) => String(input ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+
+            const stripHtmlToText = (input) => String(input ?? '')
+                // Convert common breaks to newlines first
+                .replaceAll(/<br\s*\/?>/gi, '\n')
+                .replaceAll(/<\/p\s*>/gi, '\n')
+                .replaceAll(/<\/div\s*>/gi, '\n')
+                .replaceAll(/<\/li\s*>/gi, '\n')
+                .replaceAll(/<\/ul\s*>/gi, '\n')
+                .replaceAll(/<\/ol\s*>/gi, '\n')
+                // Drop the remaining tags
+                .replaceAll(/<[^>]+>/g, '')
+                // Light cleanup
+                .replaceAll(/&nbsp;/gi, ' ')
+                .replaceAll(/&amp;/gi, '&')
+                .replaceAll(/&lt;/gi, '<')
+                .replaceAll(/&gt;/gi, '>')
+                .trim();
+
+            const isHtmlInput = body ? /<[a-z][\s\S]*>/i.test(body) : false;
+
+            // Signature is stored as JSON in profile.email_signature_json
+            const SIGNATURE_PROFILE_KEY = 'email_signature_json';
+            const parsedSignature = includeSignature ? parseSignatureJson(profile?.[SIGNATURE_PROFILE_KEY]) : null;
+            const normalisedSignature = parsedSignature && typeof parsedSignature === 'object'
+                ? normaliseSignaturePayload(parsedSignature)
+                : normaliseSignaturePayload({});
+
+            const signatureHtml = includeSignature ? generateSignatureHtml(normalisedSignature) : '';
+            const signatureText = includeSignature ? generateSignatureText(normalisedSignature) : '';
+
+            // Build content for provider + a clean plain-text version for the chat thread.
+            let htmlContent = null;
+            let textContent = null;
+            let bodyForLog = body;
+
+            if (includeSignature) {
+                const trimmedSignatureText = (signatureText || '').trim();
+                const trimmedSignatureHtml = (signatureHtml || '').trim();
+
+                if (isHtmlInput) {
+                    // Keep chat clean even if user pasted HTML.
+                    bodyForLog = trimmedSignatureText
+                        ? `${stripHtmlToText(body)}\n${trimmedSignatureText}`
+                        : stripHtmlToText(body);
+                    htmlContent = trimmedSignatureHtml ? `${body}\n<br/><br/>\n${trimmedSignatureHtml}` : body;
+                    textContent = null; // mailgun will use html
+                } else {
+                    bodyForLog = trimmedSignatureText ? `${body}\n${trimmedSignatureText}` : body;
+                    textContent = bodyForLog;
+                    htmlContent = trimmedSignatureHtml
+                        ? `${escapeHtml(body).replaceAll('\n', '<br/>')}\n<br/><br/>\n${trimmedSignatureHtml}`
+                        : null;
+                }
+            } else {
+                htmlContent = isHtmlInput ? body : null;
+                textContent = htmlContent ? null : body;
+                bodyForLog = isHtmlInput ? stripHtmlToText(body) : body;
+            }
 
             const senderEmailEnv = (process.env.MAILGUN_SENDER_EMAIL || '').trim();
             const mailgunFrom =
@@ -318,7 +388,7 @@ function mountLeadsCrud(app) {
                 direction: 'outbound',
                 status: 'sent',
                 subject,
-                body,
+                body: bodyForLog,
                 from_email: senderEmail,
                 to_email: toEmail.trim(),
             });
