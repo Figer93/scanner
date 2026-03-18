@@ -6,6 +6,13 @@
 
 const VAR_PATTERN = /\{\{(\w+)\}\}/g;
 
+const {
+    parseSignatureJson,
+    normaliseSignaturePayload,
+    generateSignatureHtml,
+    generateSignatureText,
+} = require('../routes/emailSignature');
+
 /**
  * Get first director full name from lead source_metadata.officers.
  * @param {object} lead - Lead row with source_metadata
@@ -67,6 +74,14 @@ function buildVariableMap(lead, profile) {
     const referralLink = (profile?.referral_link && String(profile.referral_link).trim()) || '';
     const senderName = (profile?.sender_name && String(profile.sender_name).trim()) || '';
 
+    const signatureRaw = profile?.email_signature_json;
+    const parsedSignature = parseSignatureJson(signatureRaw);
+    const signature = parsedSignature && typeof parsedSignature === 'object'
+        ? normaliseSignaturePayload(parsedSignature)
+        : normaliseSignaturePayload({});
+    const signatureHtml = generateSignatureHtml(signature);
+    const signatureText = generateSignatureText(signature);
+
     const values = {
         company_name: companyName,
         director_name: directorName,
@@ -75,6 +90,8 @@ function buildVariableMap(lead, profile) {
         company_type: companyType,
         referral_link: referralLink,
         sender_name: senderName,
+        signature: signatureHtml,
+        signature_text: signatureText,
     };
 
     const knownVars = new Set(Object.keys(values));

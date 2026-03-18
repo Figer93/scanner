@@ -1,5 +1,5 @@
 /**
- * Outreach — email templates, sent message log, and follow-up sequences.
+ * Outreach — email templates, follow-up sequences, and conversations.
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -13,6 +13,7 @@ import { formatDateTime } from '../lib/utils';
 import { useLists } from '../hooks/useLists';
 import { useLeads } from '../hooks/useLeads';
 import LeadEmailConversation from './company/LeadEmailConversation';
+import SignatureTab from './outreach/SignatureTab';
 
 interface EmailTemplate {
     id: number;
@@ -21,15 +22,6 @@ interface EmailTemplate {
     body: string;
     created_at: string;
     updated_at: string;
-}
-
-interface EmailLog {
-    id: number;
-    lead_id: number;
-    company_name?: string;
-    direction: string;
-    status: string;
-    sent_at: string;
 }
 
 interface PreviewData {
@@ -82,23 +74,6 @@ function saveLastSeenMap(map: Record<string, string>) {
     }
 }
 
-function MarkRepliedButton({ leadId, onSuccess }: { leadId: number; onSuccess: () => void }) {
-    const mutation = useMutation({
-        mutationFn: () => api.post('/api/webhooks/brevo/test', { event: 'replied', leadId }),
-        onSuccess: () => { onSuccess(); },
-    });
-    return (
-        <button
-            type="button"
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-            className="text-xs text-violet-300 hover:text-violet-200 underline disabled:opacity-50"
-        >
-            {mutation.isPending ? 'Updating…' : 'Mark as replied'}
-        </button>
-    );
-}
-
 interface OutreachProps {
     /** When set, open Conversations tab and select this lead (from e.g. #/outreach?conversation=123). */
     initialConversationLeadId?: string | null;
@@ -108,7 +83,6 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
     const queryClient = useQueryClient();
     const { data: lists = [] } = useLists();
     const { data: leads = [] } = useLeads();
-    const [listIdFilter, setListIdFilter] = useState('');
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formName, setFormName] = useState('');
@@ -123,7 +97,7 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
     const [previewLoading, setPreviewLoading] = useState(false);
     const [testEmail, setTestEmail] = useState('');
 
-    const [activeTab, setActiveTab] = useState<'templates' | 'sent' | 'sequences' | 'conversations'>('conversations');
+    const [activeTab, setActiveTab] = useState<'templates' | 'signature' | 'sequences' | 'conversations'>('conversations');
     const [conversationLeadId, setConversationLeadId] = useState<string>('');
     const [newSequenceName, setNewSequenceName] = useState('');
     const [newSequenceModalOpen, setNewSequenceModalOpen] = useState(false);
@@ -150,17 +124,6 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
         staleTime: 30_000,
     });
 
-    const { data: logs = [], isLoading: loadingLogs } = useQuery<EmailLog[]>({
-        queryKey: ['email-logs', listIdFilter],
-        queryFn: async () => {
-            const params = new URLSearchParams({ limit: '100' });
-            if (listIdFilter) params.set('listId', listIdFilter);
-            const d: EmailLog[] = await api.get(`/api/email-logs?${params}`);
-            return Array.isArray(d) ? d : [];
-        },
-        staleTime: 30_000,
-    });
-
     const { data: sequences = [], isLoading: loadingSequences } = useQuery<Sequence[]>({
         queryKey: ['sequences'],
         queryFn: async () => {
@@ -171,7 +134,9 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
         enabled: activeTab === 'sequences',
     });
 
-    const { data: inboxSummary = [] } = useQuery<Array<{ lead_id: number; last_inbound_at: string | null }>>({
+    const { data: inboxSummary = [] } = useQuery<
+        Array<{ lead_id: number; last_inbound_at: string | null; last_message_at: string | null }>
+    >({
         queryKey: ['email-inbox-summary'],
         queryFn: async () => {
             const d = await api.get('/api/email-inbox/summary?limit=2000');
@@ -341,11 +306,12 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                 </button>
                 <button
                     type="button"
-                    onClick={() => setActiveTab('sent')}
-                    className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-[var(--transition-base)] focus-visible:ring-2 ring-violet-500 ring-offset-2 ring-offset-transparent ${activeTab === 'sent' ? 'bg-white/12 text-white border border-white/10 border-b-0' : 'text-white/60 hover:text-white/80 hover:bg-white/5'}`}
-                    aria-current={activeTab === 'sent' ? 'true' : undefined}
+                    onClick={() => setActiveTab('signature')}
+                    className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-[var(--transition-base)] focus-visible:ring-2 ring-violet-500 ring-offset-2 ring-offset-transparent ${activeTab === 'signature' ? 'bg-white/12 text-white border border-white/10 border-b-0' : 'text-white/60 hover:text-white/80 hover:bg-white/5'}`}
+                    aria-current={activeTab === 'signature' ? 'true' : undefined}
                 >
-                    Sent messages
+                    <Pencil size={16} className="inline-block mr-1.5 align-middle" aria-hidden="true" />
+                    Signature
                 </button>
                 <button
                     type="button"
@@ -397,53 +363,8 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
             </GlassCard>
             )}
 
-            {activeTab === 'sent' && (
-            <GlassCard className="p-6">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                    <h2 className="text-lg font-semibold text-white">Sent messages</h2>
-                    <Select className="min-w-[180px]" value={listIdFilter} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setListIdFilter(e.target.value)} aria-label="Filter by list">
-                        <option value="">All lists</option>
-                        {lists.map((l) => <option key={l.id} value={String(l.id)}>{l.name}</option>)}
-                    </Select>
-                </div>
-                {loadingLogs ? (
-                    <p className="text-white/60 text-sm">Loading…</p>
-                ) : logs.length === 0 ? (
-                    <EmptyState icon={Mail} title="No sent messages yet" description="Emails sent via Brevo will appear here when logged." compact />
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-white/10">
-                        <table className="w-full text-sm" aria-label="Sent email log">
-                            <caption className="sr-only">Sent email messages</caption>
-                            <thead>
-                                <tr>
-                                    <th scope="col" className="py-2.5 px-4 text-left text-xs font-semibold text-white/50 uppercase bg-white/5 border-b border-white/10">Date</th>
-                                    <th scope="col" className="py-2.5 px-4 text-left text-xs font-semibold text-white/50 uppercase bg-white/5 border-b border-white/10">Lead / Company</th>
-                                    <th scope="col" className="py-2.5 px-4 text-left text-xs font-semibold text-white/50 uppercase bg-white/5 border-b border-white/10">Direction</th>
-                                    <th scope="col" className="py-2.5 px-4 text-left text-xs font-semibold text-white/50 uppercase bg-white/5 border-b border-white/10">Status</th>
-                                    <th scope="col" className="py-2.5 px-4 text-left text-xs font-semibold text-white/50 uppercase bg-white/5 border-b border-white/10">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {logs.map((row) => (
-                                    <tr key={row.id} className="border-b border-white/5 hover:bg-white/5">
-                                        <td className="py-2.5 px-4 text-white/80">{formatDateTime(row.sent_at)}</td>
-                                        <td className="py-2.5 px-4 text-white/80">{row.company_name || `Lead #${row.lead_id}`}</td>
-                                        <td className="py-2.5 px-4 text-white/70">{row.direction || 'outbound'}</td>
-                                        <td className="py-2.5 px-4">
-                                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${(row.status || 'sent').toLowerCase() === 'sent' ? 'bg-emerald-500/20 text-emerald-300' : (row.status || 'sent').toLowerCase() === 'replied' ? 'bg-violet-500/20 text-violet-300' : 'bg-white/10 text-white/70'}`}>{row.status || 'sent'}</span>
-                                        </td>
-                                        <td className="py-2.5 px-4">
-                                            {(row.status || 'sent').toLowerCase() !== 'replied' && (
-                                                <MarkRepliedButton leadId={row.lead_id} onSuccess={() => { void queryClient.invalidateQueries({ queryKey: ['email-logs'] }); }} />
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </GlassCard>
+            {activeTab === 'signature' && (
+                <SignatureTab />
             )}
 
             {activeTab === 'sequences' && (
@@ -511,10 +432,22 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                 const leadsWithEmail = leads.filter(hasValidEmail);
                 const preselectedId = conversationLeadId ? parseInt(conversationLeadId, 10) : null;
                 const preselectedLead = preselectedId != null && !Number.isNaN(preselectedId) ? leads.find((l) => l.id === preselectedId) : null;
-                const sidebarLeads =
+                const inboxByLeadId = new Map(inboxSummary.map((x) => [x.lead_id, x] as const));
+
+                const sidebarLeadsRaw =
                     preselectedLead && !leadsWithEmail.some((l) => l.id === preselectedLead.id)
                         ? [preselectedLead, ...leadsWithEmail]
                         : leadsWithEmail;
+
+                // Sort by "latest message timestamp" per conversation, newest first.
+                const sidebarLeads = [...sidebarLeadsRaw].sort((a, b) => {
+                    const aLastMessageAt = inboxByLeadId.get(a.id)?.last_message_at;
+                    const bLastMessageAt = inboxByLeadId.get(b.id)?.last_message_at;
+                    const aTime = aLastMessageAt ? new Date(aLastMessageAt).getTime() : 0;
+                    const bTime = bLastMessageAt ? new Date(bLastMessageAt).getTime() : 0;
+                    if (bTime !== aTime) return bTime - aTime;
+                    return a.id - b.id;
+                });
 
                 const handleSelectLead = (leadId: number) => {
                     setConversationLeadId(String(leadId));
@@ -556,7 +489,7 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                                                 const label = lead.company_name || `Lead #${lead.id}`;
                                                 const isActive = lead.id === selectedId;
                                                 const lastSeen = loadLastSeenMap();
-                                                const lastInbound = inboxSummary.find((x) => x.lead_id === lead.id)?.last_inbound_at;
+                                                const lastInbound = inboxByLeadId.get(lead.id)?.last_inbound_at;
                                                 const unread =
                                                     Boolean(lastInbound) &&
                                                     (!lastSeen[String(lead.id)] || new Date(lastInbound as string).getTime() > new Date(lastSeen[String(lead.id)]).getTime());
@@ -648,7 +581,7 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                     <div>
                         <label htmlFor="outreach-body" className="block text-sm text-white/70 mb-1">Body</label>
                         <textarea id="outreach-body" className="w-full bg-white/5 border border-white/10 rounded-inner px-4 py-2.5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-primary)]/50 min-h-[120px]" rows={6} value={formBody} onChange={(e) => setFormBody(e.target.value)} placeholder="Email body (plain text or HTML)" />
-                        <p className="mt-1 text-xs text-white/50">Variables: {`{{company_name}} {{director_name}} {{director_first_name}} {{incorporation_date}} {{company_type}} {{referral_link}} {{sender_name}}`}</p>
+                        <p className="mt-1 text-xs text-white/50">Variables: {`{{company_name}} {{director_name}} {{director_first_name}} {{incorporation_date}} {{company_type}} {{referral_link}} {{sender_name}} {{signature}} {{signature_text}}`}</p>
                     </div>
                 </div>
                 <div className="flex gap-3 justify-end mt-6">

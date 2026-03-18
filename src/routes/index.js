@@ -11,6 +11,7 @@ const { mountChCache } = require('./chCache');
 const { mountLists } = require('./lists');
 const { mountEmailTemplates } = require('./emailTemplates');
 const { mountEmailLogs } = require('./emailLogs');
+const { mountEmailSignature } = require('./emailSignature');
 const { mountSequences } = require('./sequences');
 const { mountProfile } = require('./profile');
 const { mountUsage } = require('./usage');
@@ -30,6 +31,7 @@ function mountAll(app, context = {}) {
     mountLists(app);
     mountEmailTemplates(app);
     mountEmailLogs(app);
+    mountEmailSignature(app);
     mountSequences(app);
     mountProfile(app);
     mountUsage(app);

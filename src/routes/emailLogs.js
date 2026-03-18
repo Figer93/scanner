@@ -228,15 +228,18 @@ function mountEmailLogs(app) {
     });
 
     // GET /api/email-inbox/summary — last inbound timestamp per lead (for unread badges)
+    // and last overall message timestamp per lead (for conversation sorting).
     app.get('/api/email-inbox/summary', validateQuery(inboxSummaryQuerySchema), async (req, res) => {
         try {
             const db = await getDb();
             initSchema(db);
             const limit = req.query.limit;
             const rows = await db.query(
-                `SELECT el.lead_id, MAX(el.sent_at) as last_inbound_at
+                `SELECT
+                    el.lead_id,
+                    MAX(CASE WHEN el.direction = 'inbound' THEN el.sent_at ELSE NULL END) as last_inbound_at,
+                    MAX(el.sent_at) as last_message_at
                  FROM email_logs el
-                 WHERE el.direction = 'inbound'
                  GROUP BY el.lead_id
                  ORDER BY MAX(el.sent_at) DESC
                  LIMIT $1`,
@@ -245,6 +248,7 @@ function mountEmailLogs(app) {
             res.json((rows || []).map((r) => ({
                 lead_id: r.lead_id,
                 last_inbound_at: r.last_inbound_at ? String(r.last_inbound_at) : null,
+                last_message_at: r.last_message_at ? String(r.last_message_at) : null,
             })));
         } catch (err) {
             logger.error({ err }, 'Failed to get inbox summary');
