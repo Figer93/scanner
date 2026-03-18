@@ -10,6 +10,14 @@
     "railway": {
       "command": "node",
       "args": ["mcp/railway-mcp/server.js"]
+    },
+    "mailgun": {
+      "command": "npx",
+      "args": ["-y", "@mailgun/mcp-server"],
+      "env": {
+        "MAILGUN_API_KEY": "",
+        "MAILGUN_API_REGION": "eu"
+      }
     }
   }
 }
