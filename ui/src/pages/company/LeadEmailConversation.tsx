@@ -32,7 +32,8 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
     const queryClient = useQueryClient();
     const [replySubject, setReplySubject] = useState('');
     const [replyBody, setReplyBody] = useState('');
-    const endRef = useRef<HTMLDivElement | null>(null);
+    const threadViewportRef = useRef<HTMLDivElement | null>(null);
+    const lastLeadIdRef = useRef<number | null>(null);
 
     const { data: messages = [], isLoading } = useQuery<EmailMessage[]>({
         queryKey: ['email-logs', leadId],
@@ -69,8 +70,18 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
     }, [messages]);
 
     useEffect(() => {
-        // Keep the thread scrolled to the newest message.
-        endRef.current?.scrollIntoView({ block: 'end' });
+        // Chat UX: only auto-scroll if the user is already near the bottom.
+        const el = threadViewportRef.current;
+        if (!el) return;
+
+        const leadChanged = lastLeadIdRef.current !== leadId;
+        lastLeadIdRef.current = leadId;
+
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        const shouldStickToBottom = leadChanged || distanceFromBottom < 160;
+
+        if (!shouldStickToBottom) return;
+        el.scrollTo({ top: el.scrollHeight, behavior: leadChanged ? 'auto' : 'smooth' });
     }, [leadId, thread.length]);
 
     useEffect(() => {
@@ -85,7 +96,7 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
 
     return (
         <div className="h-full flex flex-col min-h-0">
-            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-2">
+            <div ref={threadViewportRef} className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-2">
                 {isLoading ? (
                     <p className="text-sm text-white/50">Loading…</p>
                 ) : thread.length === 0 ? (
@@ -139,7 +150,7 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
                                 </div>
                             );
                         })}
-                        <div ref={endRef} />
+                        <div className="h-1" aria-hidden="true" />
                     </>
                 )}
             </div>
