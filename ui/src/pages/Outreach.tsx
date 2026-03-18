@@ -558,7 +558,7 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                                                 <p className="text-xs text-white/60 truncate">{(selectedEmail as string).trim()}</p>
                                             </div>
                                         </header>
-                                        <div className="flex-1 min-h-0">
+                                        <div className="flex-1 min-h-0 flex flex-col">
                                             <LeadEmailConversation
                                                 key={selectedLead.id}
                                                 leadId={selectedLead.id}

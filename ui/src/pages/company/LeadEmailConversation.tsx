@@ -95,7 +95,7 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
     }, [leadId, thread]);
 
     return (
-        <div className="h-full flex flex-col min-h-0">
+        <div className="flex-1 min-h-0 flex flex-col">
             <div ref={threadViewportRef} className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-2">
                 {isLoading ? (
                     <p className="text-sm text-white/50">Loading…</p>
