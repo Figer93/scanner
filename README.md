@@ -61,6 +61,22 @@ CHScanner is intended to run **fully in Railway + Supabase** (no local DB).
 
 Most secrets can also be set from the **Profile** page and are stored in the database (no redeploy needed for changes).
 
+### Mailgun replies (inbound)
+
+If you want **email replies** to appear in **Outreach → Conversations**, configure Mailgun inbound forwarding:
+
+- **1. Set Reply-To**
+  - Set `MAILGUN_REPLY_TO` (or Profile key `mailgun_reply_to`) to an address on your Mailgun domain, e.g. `replies@mg.yourdomain.com`.
+  - CHScanner will set the outbound email header `Reply-To` to that value so replies go to Mailgun (not to a random/non-existent mailbox).
+
+- **2. Create a Mailgun Route**
+  - In Mailgun → `Receiving` → `Routes`, add a Route that matches that address (or your whole Mailgun domain).
+  - Action: `forward()` to `https://YOUR_APP_DOMAIN/api/webhooks/mailgun/inbound` as `POST`.
+
+- **3. Test**
+  - Send a new outbound email from the app, then click **Reply** in your email client.
+  - The reply should create an inbound message in the thread and set the lead to **Replied**.
+
 ---
 
 ## Tech stack

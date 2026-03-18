@@ -14,6 +14,7 @@ function getMailgunConfigFromProfile(profile) {
     const region = (profile.mailgun_region || process.env.MAILGUN_REGION || 'us').trim().toLowerCase();
     const fromEmail = (profile.sender_email || process.env.MAILGUN_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || '').trim();
     const fromName = (profile.sender_name || process.env.MAILGUN_SENDER_NAME || process.env.BREVO_SENDER_NAME || 'CHScanner').trim();
+    const replyTo = (profile.mailgun_reply_to || process.env.MAILGUN_REPLY_TO || '').trim();
 
     const baseUrl = region === 'eu'
         ? 'https://api.eu.mailgun.net/v3'
@@ -25,6 +26,7 @@ function getMailgunConfigFromProfile(profile) {
         region,
         fromEmail,
         fromName,
+        replyTo,
         baseUrl,
     };
 }
@@ -51,6 +53,7 @@ async function sendMailgunEmail({
     headers,
     tags,
     variables,
+    replyTo,
     profileOverride,
 }) {
     if (!to || !String(to).trim()) {
@@ -77,6 +80,11 @@ async function sendMailgunEmail({
     form.set('from', cfg.fromName ? `${cfg.fromName} <${cfg.fromEmail}>` : cfg.fromEmail);
     form.set('to', to);
     form.set('subject', subject);
+    const effectiveReplyTo = (replyTo || cfg.replyTo || '').trim();
+    if (effectiveReplyTo) {
+        // Ensure replies are routed to Mailgun inbound (Routes) instead of a non-existent "From" mailbox.
+        form.set('h:Reply-To', effectiveReplyTo);
+    }
     if (html && html.trim()) {
         form.set('html', html);
     }
