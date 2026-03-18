@@ -54,9 +54,10 @@ async function addEmailLog(db, log) {
             body,
             from_email,
             to_email,
+            matched_via,
             sent_at
         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, COALESCE($12, CURRENT_TIMESTAMP)) RETURNING id`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13, CURRENT_TIMESTAMP)) RETURNING id`,
         [
             log.lead_id,
             log.template_id ?? null,
@@ -69,6 +70,7 @@ async function addEmailLog(db, log) {
             log.body ?? null,
             log.from_email ?? null,
             log.to_email ?? null,
+            log.matched_via ?? null,
             sentAt || null,
         ]
     );
@@ -78,7 +80,7 @@ async function addEmailLog(db, log) {
 async function getEmailLogs(db, options = {}) {
     const limit = Math.min(200, Math.max(1, options.limit || 50));
     let sql = `SELECT el.id, el.lead_id, el.template_id, el.brevo_message_id, el.provider, el.provider_message_id, el.direction, el.status, el.sent_at, el.updated_at,
-               el.subject, el.body, el.from_email, el.to_email,
+               el.subject, el.body, el.from_email, el.to_email, el.matched_via,
                l.company_name, l.company_number FROM email_logs el
                LEFT JOIN leads l ON l.id = el.lead_id WHERE 1=1`;
     const params = [];

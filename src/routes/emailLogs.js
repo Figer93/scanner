@@ -21,6 +21,7 @@ const {
     getDb, initSchema, getEmailLogs, getEmailLogByBrevoMessageId, updateEmailLogStatus,
     addEmailLog, updateLead, getProfile, setProfileKey, addLeadActivity, setEnrolmentStatusForLead,
     setLeadMilestoneOnce,
+    getLeadByContactEmail,
 } = require('../services/database');
 const { STATUS } = require('../services/database');
 const { validate, validateQuery } = require('../middleware/validate');
@@ -359,6 +360,7 @@ function mountEmailLogs(app) {
                     from_email: fromAddr,
                     to_email: null,
                     sent_at: sentAt,
+                    matched_via: 'in_reply_to',
                 });
                 await recordWebhookReceived(db);
                 processed++;
@@ -445,6 +447,36 @@ function mountEmailLogs(app) {
             const replyKey = inReplyTo || messageId;
             const outboundLog = await getEmailLogByMailgunMessageIdFlexible(db, replyKey);
             if (!outboundLog) {
+                // Orphan inbound: no outbound email matched by In-Reply-To/Message-Id.
+                // Try to correlate by sender email to a lead contact.
+                if (fromEmail) {
+                    const matchedLead = await getLeadByContactEmail(db, fromEmail);
+                    if (matchedLead?.id) {
+                        await updateLead(db, matchedLead.id, { status: STATUS.REPLIED });
+                        await setEnrolmentStatusForLead(db, matchedLead.id, 'replied');
+                        await addLeadActivity(db, matchedLead.id, 'email_replied', 'Direct inbound message received');
+                        await setLeadMilestoneOnce(db, matchedLead.id, 'replied', sentAt || null);
+
+                        await addEmailLog(db, {
+                            lead_id: matchedLead.id,
+                            template_id: null,
+                            brevo_message_id: null,
+                            provider: 'mailgun',
+                            provider_message_id: messageId || null,
+                            direction: 'inbound',
+                            status: 'replied',
+                            subject: subject || null,
+                            body: text.trim() || null,
+                            from_email: fromEmail || null,
+                            to_email: null,
+                            sent_at: sentAt || null,
+                            matched_via: 'sender_fallback',
+                        });
+
+                        await recordMailgunWebhookReceived(db);
+                        return res.status(200).json({ ok: true, processed: 1 });
+                    }
+                }
                 return res.status(200).json({ ok: true, processed: 0 });
             }
 
@@ -467,6 +499,7 @@ function mountEmailLogs(app) {
                 from_email: fromEmail || null,
                 to_email: null,
                 sent_at: sentAt || null,
+                matched_via: 'in_reply_to',
             });
 
             await recordMailgunWebhookReceived(db);

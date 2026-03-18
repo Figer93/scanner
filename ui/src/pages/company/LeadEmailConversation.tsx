@@ -20,6 +20,7 @@ interface EmailMessage {
     from_email: string | null;
     to_email: string | null;
     company_name?: string;
+    matched_via?: string | null;
 }
 
 interface LeadEmailConversationProps {
@@ -92,7 +93,10 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
         if (replySubject.trim()) return;
         const lastWithSubject = [...thread].reverse().find((m) => (m.subject || '').trim());
         const base = (lastWithSubject?.subject || '').trim();
-        if (!base) return;
+        if (!base) {
+            setReplySubject('No subject (CHScanner)');
+            return;
+        }
         setReplySubject(base.toLowerCase().startsWith('re:') ? base : `Re: ${base}`);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [leadId, thread]);
@@ -129,6 +133,11 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
                                                     : 'bg-white/8 border-white/10 text-white/90 rounded-2xl rounded-bl-md'
                                             }`}
                                         >
+                                            {msg.direction === 'inbound' && msg.matched_via === 'sender_fallback' && (
+                                                <div className="text-[11px] text-white/70 font-medium mb-1 truncate">
+                                                    Direct message
+                                                </div>
+                                            )}
                                             {msg.subject && (
                                                 <div className="text-[11px] text-white/70 font-medium mb-1 truncate">
                                                     {msg.subject}

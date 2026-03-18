@@ -133,6 +133,8 @@ CREATE TABLE IF NOT EXISTS email_logs (
     body TEXT,
     from_email TEXT,
     to_email TEXT,
+    -- How the inbound message was correlated/matched for UI.
+    matched_via TEXT,
     sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -140,6 +142,7 @@ CREATE TABLE IF NOT EXISTS email_logs (
 CREATE INDEX IF NOT EXISTS idx_email_logs_lead_id ON email_logs(lead_id);
 CREATE INDEX IF NOT EXISTS idx_email_logs_brevo_message_id ON email_logs(brevo_message_id);
 CREATE INDEX IF NOT EXISTS idx_email_logs_provider_message_id ON email_logs(provider_message_id);
+CREATE INDEX IF NOT EXISTS idx_email_logs_matched_via ON email_logs(matched_via);
 
 -- Sequences
 CREATE TABLE IF NOT EXISTS sequences (

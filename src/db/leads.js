@@ -239,6 +239,30 @@ async function leadExistsByDomain(db, domainOrUrl) {
     return false;
 }
 
+/**
+ * Find a lead whose `emails` JSON array contains the given email (case-insensitive).
+ * Used as a fallback when inbound messages don't match any existing email thread via In-Reply-To.
+ */
+async function getLeadByContactEmail(db, email) {
+    const raw = email != null ? String(email).trim() : '';
+    if (!raw) return null;
+    const normalized = raw.toLowerCase();
+    // `emails` is stored as JSON text (e.g. '["a@b.com"]'). Cast to jsonb for querying.
+    return db.queryOne(
+        `SELECT * FROM leads
+         WHERE emails IS NOT NULL
+           AND emails <> ''
+           AND emails <> '[]'
+           AND EXISTS (
+             SELECT 1
+             FROM jsonb_array_elements_text(leads.emails::jsonb) e
+             WHERE lower(trim(e)) = lower($1)
+           )
+         LIMIT 1`,
+        [normalized]
+    ).then((row) => (row ? parseLeadRow(row) : null));
+}
+
 async function getLeadActivities(db, leadId) {
     return db.query('SELECT * FROM lead_activities WHERE lead_id = $1 ORDER BY created_at DESC', [leadId]);
 }
@@ -274,6 +298,7 @@ module.exports = {
     ensureLeadEnrichedAt,
     setLeadMilestoneOnce,
     setLeadConverted,
+    getLeadByContactEmail,
     updateLeadEnrichment,
     leadExistsByDomain,
     getLeadActivities,
