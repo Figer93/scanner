@@ -155,7 +155,7 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
                 )}
             </div>
 
-            <div className="shrink-0 border-t border-white/10 bg-slate-950/60 px-5 py-4">
+            <div className="shrink-0 border-t border-white/10 bg-slate-950/60 px-5 py-4 pb-5">
                 <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="text-xs text-white/45 truncate">
                         To: <span className="text-white/70">{leadEmail}</span>

@@ -530,7 +530,7 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                                     )}
                                 </div>
                             </aside>
-                            <section className="flex-1 flex flex-col bg-slate-950/60">
+                            <section className="flex-1 min-h-0 flex flex-col bg-slate-950/60 overflow-hidden">
                                 {!selectedLead ? (
                                     <div className="flex-1 flex items-center justify-center px-6">
                                         <div className="text-center max-w-sm">
@@ -549,7 +549,7 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex-1 flex flex-col">
+                                    <div className="flex-1 min-h-0 flex flex-col">
                                         <header className="px-5 py-3 border-b border-white/10 flex items-center justify-between gap-3">
                                             <div>
                                                 <h3 className="text-sm font-semibold text-white">
