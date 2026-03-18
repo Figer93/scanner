@@ -15,6 +15,28 @@ import { endpoints } from './api/endpoints';
 import { getPageFromHash } from './constants/routes';
 import { useSocketLogs } from './hooks/useSocket';
 
+const INBOX_LAST_SEEN_KEY = 'chscanner_inbox_last_seen_v1';
+
+function loadLastSeenMap() {
+  try {
+    const raw = localStorage.getItem(INBOX_LAST_SEEN_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    return obj && typeof obj === 'object' ? obj : {};
+  } catch {
+    return {};
+  }
+}
+
+function parseTs(ts) {
+  if (!ts) return null;
+  const s = String(ts).trim();
+  if (!s) return null;
+  const normalized = s.includes('T') ? s : s.replace(' ', 'T');
+  const withZone = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(normalized) ? normalized : `${normalized}Z`;
+  const t = Date.parse(withZone);
+  return Number.isFinite(t) ? t : null;
+}
+
 const KanbanPage = lazy(() => import('./pages/kanban/KanbanPage'));
 const Outreach = lazy(() => import('./pages/Outreach'));
 
@@ -43,6 +65,7 @@ function AppInner() {
   const { page, leadId, companyNumber, conversationLeadId } = useHashRoute();
   const [logs, setLogs, clearLogs] = useSocketLogs();
   const [userName, setUserName] = useState('User');
+  const [outreachUnreadCount, setOutreachUnreadCount] = useState(0);
   const [darkMode, setDarkMode] = useState(() => {
     try {
       return localStorage.getItem(THEME_STORAGE_KEY) === 'dark';
@@ -87,6 +110,39 @@ function AppInner() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    let timer;
+
+    async function tick() {
+      try {
+        const data = await api.get('/api/email-inbox/summary?limit=2000');
+        const rows = Array.isArray(data) ? data : [];
+        const lastSeen = loadLastSeenMap();
+        let unread = 0;
+        for (const r of rows) {
+          const leadIdNum = r && r.lead_id != null ? Number(r.lead_id) : null;
+          if (!leadIdNum || !Number.isFinite(leadIdNum)) continue;
+          const lastInboundAt = parseTs(r.last_inbound_at);
+          if (!lastInboundAt) continue;
+          const seenAt = parseTs(lastSeen[String(leadIdNum)]);
+          if (!seenAt || lastInboundAt > seenAt) unread++;
+        }
+        if (!cancelled) setOutreachUnreadCount(unread);
+      } catch {
+        if (!cancelled) setOutreachUnreadCount(0);
+      } finally {
+        if (!cancelled) timer = setTimeout(tick, 15000);
+      }
+    }
+
+    tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
   const handleClearLogs = () => clearLogs();
   const handleBackToLeads = () => { window.location.hash = '#/leads'; };
 
@@ -112,6 +168,7 @@ function AppInner() {
       userName={userName}
       darkMode={darkMode}
       onThemeToggle={() => setDarkMode((d) => !d)}
+      navBadges={{ outreach: outreachUnreadCount }}
     >
       {page === 'home' && <Home />}
       {isFindLeads && <LeadsPage />}

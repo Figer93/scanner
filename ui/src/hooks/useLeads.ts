@@ -36,6 +36,11 @@ export interface Lead {
     created_at: string;
     updated_at: string;
     date_added?: string | null;
+    enriched_at?: string | null;
+    first_email_sent_at?: string | null;
+    first_email_opened_at?: string | null;
+    first_email_replied_at?: string | null;
+    converted_at?: string | null;
 }
 
 export interface ScoreBreakdown {
@@ -60,6 +65,7 @@ export interface LeadUpdatePayload {
     assigned_to?: string | null;
     emails?: string[];
     phones?: string[];
+    converted?: boolean;
 }
 
 // ── Query key factory ────────────────────────────────────────

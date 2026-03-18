@@ -141,6 +141,63 @@ async function updateLead(db, id, updates) {
     await db.run(`UPDATE leads SET ${setClause.join(', ')} WHERE id = $${idx}`, values);
 }
 
+async function ensureLeadEnrichedAt(db, leadId, at = null) {
+    if (!leadId) return;
+    await db.run(
+        `UPDATE leads
+         SET enriched_at = COALESCE(enriched_at, COALESCE($1, CURRENT_TIMESTAMP)),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [at, leadId]
+    );
+}
+
+const MILESTONE_COLUMNS = Object.freeze({
+    sent: 'first_email_sent_at',
+    opened: 'first_email_opened_at',
+    replied: 'first_email_replied_at',
+});
+
+/**
+ * Set a milestone timestamp exactly once per lead, but only after the lead is enriched.
+ * If `at` is provided, it must be >= enriched_at (otherwise ignored).
+ */
+async function setLeadMilestoneOnce(db, leadId, milestone, at = null) {
+    const col = MILESTONE_COLUMNS[milestone];
+    if (!col) return;
+    await db.run(
+        `UPDATE leads
+         SET ${col} = COALESCE(${col}, COALESCE($1, CURRENT_TIMESTAMP)),
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $2
+           AND enriched_at IS NOT NULL
+           AND (${col} IS NULL)
+           AND (COALESCE($1, CURRENT_TIMESTAMP) >= enriched_at)`,
+        [at, leadId]
+    );
+}
+
+async function setLeadConverted(db, leadId, converted) {
+    if (!leadId) return;
+    if (converted) {
+        await db.run(
+            `UPDATE leads
+             SET converted_at = COALESCE(converted_at, CURRENT_TIMESTAMP),
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1`,
+            [leadId]
+        );
+    } else {
+        await db.run(
+            `UPDATE leads
+             SET converted_at = NULL,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1`,
+            [leadId]
+        );
+    }
+}
+
 async function updateLeadEnrichment(db, id, enrichment) {
     if (!enrichment || !id) return;
     const emailsJson = JSON.stringify(enrichment.emails || []);
@@ -149,7 +206,9 @@ async function updateLeadEnrichment(db, id, enrichment) {
         `UPDATE leads SET
             website = $1, emails = $2, phones = $3, contact_form = $4,
             website_services = $5, website_size = $6, website_tech = $7,
-            ice_breaker = $8, status = $9, updated_at = CURRENT_TIMESTAMP
+            ice_breaker = $8, status = $9,
+            enriched_at = CASE WHEN enriched_at IS NULL AND $9 = 'Enriched' THEN CURRENT_TIMESTAMP ELSE enriched_at END,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = $10`,
         [
             enrichment.website ?? null, emailsJson, phonesJson, enrichment.contact_form ? 1 : 0,
@@ -212,6 +271,9 @@ module.exports = {
     getLeadsByListId,
     hasEnrichedLead,
     updateLead,
+    ensureLeadEnrichedAt,
+    setLeadMilestoneOnce,
+    setLeadConverted,
     updateLeadEnrichment,
     leadExistsByDomain,
     getLeadActivities,

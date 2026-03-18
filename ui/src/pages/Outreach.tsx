@@ -62,6 +62,26 @@ const SEQUENCE_CONDITIONS = [
     { value: 'opened_not_replied', label: 'Opened but not replied' },
 ] as const;
 
+const INBOX_LAST_SEEN_KEY = 'chscanner_inbox_last_seen_v1';
+
+function loadLastSeenMap(): Record<string, string> {
+    try {
+        const raw = localStorage.getItem(INBOX_LAST_SEEN_KEY);
+        const obj = raw ? JSON.parse(raw) : {};
+        return obj && typeof obj === 'object' ? obj : {};
+    } catch {
+        return {};
+    }
+}
+
+function saveLastSeenMap(map: Record<string, string>) {
+    try {
+        localStorage.setItem(INBOX_LAST_SEEN_KEY, JSON.stringify(map || {}));
+    } catch {
+        // ignore
+    }
+}
+
 function MarkRepliedButton({ leadId, onSuccess }: { leadId: number; onSuccess: () => void }) {
     const mutation = useMutation({
         mutationFn: () => api.post('/api/webhooks/brevo/test', { event: 'replied', leadId }),
@@ -150,6 +170,28 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
         staleTime: 30_000,
         enabled: activeTab === 'sequences',
     });
+
+    const { data: inboxSummary = [] } = useQuery<Array<{ lead_id: number; last_inbound_at: string | null }>>({
+        queryKey: ['email-inbox-summary'],
+        queryFn: async () => {
+            const d = await api.get('/api/email-inbox/summary?limit=2000');
+            return Array.isArray(d) ? d : [];
+        },
+        staleTime: 10_000,
+        refetchInterval: 15_000,
+        enabled: activeTab === 'conversations',
+    });
+
+    // If a conversation is preselected (e.g. from Company → Email), mark it as seen once we have inbox summary.
+    useEffect(() => {
+        if (activeTab !== 'conversations') return;
+        const id = conversationLeadId ? parseInt(conversationLeadId, 10) : NaN;
+        if (!Number.isFinite(id) || id <= 0) return;
+        const lastInbound = inboxSummary.find((x) => x.lead_id === id)?.last_inbound_at;
+        const lastSeen = loadLastSeenMap();
+        lastSeen[String(id)] = lastInbound || new Date().toISOString();
+        saveLastSeenMap(lastSeen);
+    }, [activeTab, conversationLeadId, inboxSummary]);
 
     const createSequenceMutation = useMutation({
         mutationFn: (name: string) => api.post('/api/sequences', { name }),
@@ -476,6 +518,10 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
 
                 const handleSelectLead = (leadId: number) => {
                     setConversationLeadId(String(leadId));
+                    const lastSeen = loadLastSeenMap();
+                    const lastInbound = inboxSummary.find((x) => x.lead_id === leadId)?.last_inbound_at;
+                    lastSeen[String(leadId)] = lastInbound || new Date().toISOString();
+                    saveLastSeenMap(lastSeen);
                 };
 
                 const selectedId = conversationLeadId ? parseInt(conversationLeadId, 10) : null;
@@ -509,6 +555,11 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                                                 const email = lead.emails?.[0];
                                                 const label = lead.company_name || `Lead #${lead.id}`;
                                                 const isActive = lead.id === selectedId;
+                                                const lastSeen = loadLastSeenMap();
+                                                const lastInbound = inboxSummary.find((x) => x.lead_id === lead.id)?.last_inbound_at;
+                                                const unread =
+                                                    Boolean(lastInbound) &&
+                                                    (!lastSeen[String(lead.id)] || new Date(lastInbound as string).getTime() > new Date(lastSeen[String(lead.id)]).getTime());
                                                 return (
                                                     <li key={lead.id}>
                                                         <button
@@ -518,7 +569,14 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                                                                 isActive ? 'bg-violet-500/25 text-white' : 'text-white/80 hover:bg-white/5'
                                                             }`}
                                                         >
-                                                            <span className="font-medium truncate">{label}</span>
+                                                            <span className="font-medium truncate flex items-center gap-2">
+                                                                <span className="truncate">{label}</span>
+                                                                {unread && (
+                                                                    <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[11px] font-semibold bg-red-500/90 text-white shrink-0">
+                                                                        New
+                                                                    </span>
+                                                                )}
+                                                            </span>
                                                             {email && (
                                                                 <span className="text-xs text-white/60 truncate">{email}</span>
                                                             )}

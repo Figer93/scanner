@@ -14,6 +14,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
     Mail, MailOpen, MessageSquare, ArrowRight,
     FileText, Inbox, Activity, Star, Play,
+    TrendingUp,
 } from 'lucide-react';
 import GlassCard from '../../components/ui/GlassCard';
 import EmptyState from '../../components/ui/EmptyState';
@@ -77,6 +78,7 @@ const TYPE_MAP: Readonly<Record<string, TypeConfig>> = {
     email_opened:   { icon: MailOpen,       iconClass: 'text-amber-400',   label: (i) => `${i.company_name} opened your email` },
     email_replied:  { icon: MessageSquare,  iconClass: 'text-emerald-400', label: (i) => `${i.company_name} replied` },
     email_received: { icon: Inbox,          iconClass: 'text-indigo-400',  label: (i) => `Inbound email from ${i.company_name}` },
+    converted:      { icon: TrendingUp,     iconClass: 'text-violet-400',  label: (i) => `${i.company_name} marked converted` },
     status_change:  { icon: ArrowRight,     iconClass: 'text-white/45',    label: parseStatusLabel },
     note:           { icon: FileText,       iconClass: 'text-white/45',    label: parseNoteLabel },
     scored:         { icon: Star,           iconClass: 'text-amber-300',   label: parseScoredLabel },

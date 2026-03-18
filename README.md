@@ -77,6 +77,20 @@ If you want **email replies** to appear in **Outreach → Conversations**, confi
   - Send a new outbound email from the app, then click **Reply** in your email client.
   - The reply should create an inbound message in the thread and set the lead to **Replied**.
 
+### Outreach tracking model (Sent / Opened / Replied / Converted)
+
+CHScanner tracks outreach performance using **one-time milestone timestamps per lead** (to avoid double-counting when you send multiple emails or have long reply threads).
+
+- **Starts after Enriched**: milestones are only recorded once a lead has `enriched_at` (i.e. after it first becomes **Enriched**).
+- **One-time per lead**:
+  - **Sent**: the first outbound email sent to the lead → `first_email_sent_at`
+  - **Opened**: the first open event received → `first_email_opened_at`
+  - **Replied**: the first inbound reply received → `first_email_replied_at`
+  - **Converted**: manually toggled in the Company page → `converted_at`
+- **Lists are live membership**: when viewing list analytics, counts are based on **current** list membership (`list_lead`). Removing a lead from a list changes that list’s stats.
+
+This makes the Dashboard counters stable and prevents “further conversation” from flooding metrics.
+
 ---
 
 ## Tech stack
@@ -123,6 +137,9 @@ npm run dev
 **Table `leads`:**  
 `id`, `company_name`, `company_number` (unique), `address`, `postcode`, `website`, `emails` (JSON), `phones` (JSON), `contact_form` (0/1), `status`, `score` (1–10), `ice_breaker`, `outreach_draft`, `source`, `created_at`, `updated_at`, plus enrichment/outreach columns.
 
+**Outreach milestone columns (per lead, one-time):**  
+`enriched_at`, `first_email_sent_at`, `first_email_opened_at`, `first_email_replied_at`, `converted_at`.
+
 **Table `profile`:**  
 `key`, `value` — API keys and settings set via the UI, overriding `.env`.
 
@@ -130,6 +147,10 @@ npm run dev
 API usage per service (tokens, requests, estimated cost).
 
 Schema is defined in `db/migrations/001_init.sql`.
+
+If you already deployed an older schema, apply the follow-up migration:
+
+- `db/migrations/002_lead_milestones.sql`
 
 ---
 

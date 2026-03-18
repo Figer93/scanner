@@ -9,14 +9,31 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 async function getFunnelStats(db) {
     const byStatus = {};
     STATUS_VALUES.forEach((s) => { byStatus[s] = 0; });
-    const rows = await db.query('SELECT status, source FROM leads');
+
+    const totalRow = await db.queryOne('SELECT COUNT(*) as c FROM leads');
+    const total = totalRow ? ((totalRow.c || 0) | 0) : 0;
+
     const bySource = {};
-    for (const row of rows) {
-        byStatus[row.status || STATUS.NEW] = (byStatus[row.status || STATUS.NEW] || 0) + 1;
-        const src = row.source || 'json_file';
-        bySource[src] = (bySource[src] || 0) + 1;
+    const srcRows = await db.query('SELECT source, COUNT(*) as c FROM leads GROUP BY source');
+    for (const r of srcRows) {
+        const src = r.source || 'json_file';
+        bySource[src] = (r.c || 0) | 0;
     }
-    return { byStatus, bySource, total: rows.length };
+
+    // Milestone-based funnel counters (one-time per lead, only after Enriched).
+    const enrichedRow = await db.queryOne('SELECT COUNT(*) as c FROM leads WHERE enriched_at IS NOT NULL');
+    const sentRow = await db.queryOne('SELECT COUNT(*) as c FROM leads WHERE first_email_sent_at IS NOT NULL');
+    const openedRow = await db.queryOne('SELECT COUNT(*) as c FROM leads WHERE first_email_opened_at IS NOT NULL');
+    const repliedRow = await db.queryOne('SELECT COUNT(*) as c FROM leads WHERE first_email_replied_at IS NOT NULL');
+    const convertedRow = await db.queryOne('SELECT COUNT(*) as c FROM leads WHERE converted_at IS NOT NULL');
+
+    byStatus[STATUS.ENRICHED] = (enrichedRow?.c || 0) | 0;
+    byStatus[STATUS.EMAIL_SENT] = (sentRow?.c || 0) | 0;
+    byStatus[STATUS.OPENED] = (openedRow?.c || 0) | 0;
+    byStatus[STATUS.REPLIED] = (repliedRow?.c || 0) | 0;
+    byStatus[STATUS.CONVERTED] = (convertedRow?.c || 0) | 0;
+
+    return { byStatus, bySource, total };
 }
 
 async function getCostPerLeadStats(db) {
@@ -66,31 +83,68 @@ async function getDbStats(db) {
 }
 
 async function getListAnalytics(db, listId) {
-    const leadIdRows = await db.query('SELECT lead_id FROM list_lead WHERE list_id = $1', [listId]);
-    const leadIds = leadIdRows.map((r) => r.lead_id);
-    if (leadIds.length === 0) {
-        return { listId, totalLeads: 0, byStatus: {}, emailsSent: 0, opened: 0, replied: 0, converted: 0, conversionRate: null };
-    }
-    const placeholders = leadIds.map((_, i) => `$${i + 1}`).join(',');
     const byStatus = {};
     STATUS_VALUES.forEach((s) => { byStatus[s] = 0; });
-    const statusRows = await db.query(`SELECT status FROM leads WHERE id IN (${placeholders})`, leadIds);
-    for (const row of statusRows) {
-        const s = row.status || STATUS.NEW;
-        byStatus[s] = (byStatus[s] || 0) + 1;
+
+    const totalRow = await db.queryOne(
+        'SELECT COUNT(*) as c FROM list_lead WHERE list_id = $1',
+        [listId]
+    );
+    const totalLeads = (totalRow?.c || 0) | 0;
+    if (totalLeads === 0) {
+        return { listId, totalLeads: 0, byStatus, emailsSent: 0, opened: 0, replied: 0, converted: 0, conversionRate: null };
     }
-    const emailsRow = await db.queryOne(`SELECT COUNT(DISTINCT id) as c FROM email_logs WHERE lead_id IN (${placeholders}) AND direction = 'outbound'`, leadIds);
-    const emailsSent = emailsRow ? (emailsRow.c || 0) : 0;
-    const openedRow = await db.queryOne(`SELECT COUNT(DISTINCT id) as c FROM email_logs WHERE lead_id IN (${placeholders}) AND status = 'opened'`, leadIds);
-    const opened = openedRow ? (openedRow.c || 0) : 0;
-    const repliedRow = await db.queryOne(`SELECT COUNT(DISTINCT lead_id) as c FROM email_logs WHERE lead_id IN (${placeholders}) AND (status = 'replied' OR direction = 'inbound')`, leadIds);
-    const replied = repliedRow ? (repliedRow.c || 0) : 0;
-    const convertedRow = await db.queryOne(`SELECT COUNT(*) as c FROM leads WHERE id IN (${placeholders}) AND status = 'Converted'`, leadIds);
-    const converted = convertedRow ? (convertedRow.c || 0) : 0;
-    const emailSentLeadCount = byStatus[STATUS.EMAIL_SENT] || 0;
-    const repliedLeadCount = byStatus[STATUS.REPLIED] || 0;
-    const conversionRate = emailSentLeadCount > 0 ? (repliedLeadCount / emailSentLeadCount) * 100 : null;
-    return { listId, totalLeads: leadIds.length, byStatus, emailsSent, opened, replied, converted, conversionRate };
+
+    // Keep byStatus as live lead.status distribution, but milestone metrics are one-time per lead.
+    const statusRows = await db.query(
+        `SELECT l.status, COUNT(*) as c
+         FROM list_lead ll
+         JOIN leads l ON l.id = ll.lead_id
+         WHERE ll.list_id = $1
+         GROUP BY l.status`,
+        [listId]
+    );
+    for (const r of statusRows) {
+        const s = r.status || STATUS.NEW;
+        byStatus[s] = (r.c || 0) | 0;
+    }
+
+    const sentRow = await db.queryOne(
+        `SELECT COUNT(*) as c
+         FROM list_lead ll
+         JOIN leads l ON l.id = ll.lead_id
+         WHERE ll.list_id = $1 AND l.first_email_sent_at IS NOT NULL`,
+        [listId]
+    );
+    const openedRow = await db.queryOne(
+        `SELECT COUNT(*) as c
+         FROM list_lead ll
+         JOIN leads l ON l.id = ll.lead_id
+         WHERE ll.list_id = $1 AND l.first_email_opened_at IS NOT NULL`,
+        [listId]
+    );
+    const repliedRow = await db.queryOne(
+        `SELECT COUNT(*) as c
+         FROM list_lead ll
+         JOIN leads l ON l.id = ll.lead_id
+         WHERE ll.list_id = $1 AND l.first_email_replied_at IS NOT NULL`,
+        [listId]
+    );
+    const convertedRow = await db.queryOne(
+        `SELECT COUNT(*) as c
+         FROM list_lead ll
+         JOIN leads l ON l.id = ll.lead_id
+         WHERE ll.list_id = $1 AND l.converted_at IS NOT NULL`,
+        [listId]
+    );
+
+    const emailsSent = (sentRow?.c || 0) | 0;
+    const opened = (openedRow?.c || 0) | 0;
+    const replied = (repliedRow?.c || 0) | 0;
+    const converted = (convertedRow?.c || 0) | 0;
+    const conversionRate = emailsSent > 0 ? (converted / emailsSent) * 100 : null;
+
+    return { listId, totalLeads, byStatus, emailsSent, opened, replied, converted, conversionRate };
 }
 
 async function getLeadIdsByStatus(db, status, listId) {
@@ -153,30 +207,51 @@ async function getRecentActivity(db, limit) {
             });
         }
     } catch (_) { /* lead_activities may not exist */ }
+    // Milestone-based email activity to avoid flooding the feed with long conversations.
     try {
         const rows = await db.query(
-            `SELECT el.id, el.status, el.direction, el.sent_at, l.company_name, l.id AS lead_id
-             FROM email_logs el
-             JOIN leads l ON l.id = el.lead_id
-             ORDER BY el.sent_at DESC
+            `SELECT id, company_name,
+                    enriched_at, first_email_sent_at, first_email_opened_at, first_email_replied_at, converted_at
+             FROM leads
+             WHERE enriched_at IS NOT NULL
+                OR first_email_sent_at IS NOT NULL
+                OR first_email_opened_at IS NOT NULL
+                OR first_email_replied_at IS NOT NULL
+                OR converted_at IS NOT NULL
+             ORDER BY GREATEST(
+                COALESCE(enriched_at, '1970-01-01'::timestamptz),
+                COALESCE(first_email_sent_at, '1970-01-01'::timestamptz),
+                COALESCE(first_email_opened_at, '1970-01-01'::timestamptz),
+                COALESCE(first_email_replied_at, '1970-01-01'::timestamptz),
+                COALESCE(converted_at, '1970-01-01'::timestamptz)
+             ) DESC
              LIMIT $1`,
             [n]
         );
+
         for (const r of rows) {
-            const type = r.direction === 'inbound' ? 'email_received'
-                : r.status === 'opened' ? 'email_opened'
-                : r.status === 'replied' ? 'email_replied'
-                : 'email_sent';
+            const leadId = r.id;
+            const companyName = String(r.company_name || '');
+            const candidates = [
+                { t: r.converted_at, type: 'converted' },
+                { t: r.first_email_replied_at, type: 'email_replied' },
+                { t: r.first_email_opened_at, type: 'email_opened' },
+                { t: r.first_email_sent_at, type: 'email_sent' },
+                { t: r.enriched_at, type: 'status_change', content: 'Status changed to Enriched' },
+            ].filter((x) => x.t);
+            if (candidates.length === 0) continue;
+            candidates.sort((a, b) => String(a.t).localeCompare(String(b.t)));
+            const last = candidates[candidates.length - 1];
             items.push({
-                id: `email_${r.id}`,
-                type,
-                company_name: String(r.company_name || ''),
-                lead_id: r.lead_id,
-                content: null,
-                timestamp: String(r.sent_at),
+                id: `milestone_${leadId}_${last.type}`,
+                type: last.type,
+                company_name: companyName,
+                lead_id: leadId,
+                content: last.content ?? null,
+                timestamp: String(last.t),
             });
         }
-    } catch (_) { /* email_logs may not exist */ }
+    } catch (_) { /* ignore */ }
     items.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
     return items.slice(0, n);
 }
@@ -188,18 +263,19 @@ async function getEmailPerformance(db, days) {
     const sinceStr = since.toISOString().slice(0, 19).replace('T', ' ');
     let sent = 0, opened = 0, replied = 0;
     try {
+        // Distinct-lead performance based on first-time milestones.
         const sentRow = await db.queryOne(
-            "SELECT COUNT(*) as c FROM email_logs WHERE direction = 'outbound' AND sent_at >= $1",
+            'SELECT COUNT(*) as c FROM leads WHERE first_email_sent_at IS NOT NULL AND first_email_sent_at >= $1',
             [sinceStr]
         );
         if (sentRow) sent = (sentRow.c || 0) | 0;
         const openedRow = await db.queryOne(
-            "SELECT COUNT(*) as c FROM email_logs WHERE status = 'opened' AND sent_at >= $1",
+            'SELECT COUNT(*) as c FROM leads WHERE first_email_opened_at IS NOT NULL AND first_email_opened_at >= $1',
             [sinceStr]
         );
         if (openedRow) opened = (openedRow.c || 0) | 0;
         const repliedRow = await db.queryOne(
-            "SELECT COUNT(*) as c FROM email_logs WHERE status = 'replied' AND sent_at >= $1",
+            'SELECT COUNT(*) as c FROM leads WHERE first_email_replied_at IS NOT NULL AND first_email_replied_at >= $1',
             [sinceStr]
         );
         if (repliedRow) replied = (repliedRow.c || 0) | 0;

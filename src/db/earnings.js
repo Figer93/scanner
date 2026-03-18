@@ -13,18 +13,19 @@ async function getEarningsMonthly(db, profile) {
     const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01 00:00:00`;
 
     try {
+        // One-time per lead milestones (after Enriched).
         const sentRow = await db.queryOne(
-            "SELECT COUNT(*) as c FROM email_logs WHERE direction = 'outbound' AND sent_at >= $1",
+            'SELECT COUNT(*) as c FROM leads WHERE first_email_sent_at IS NOT NULL AND first_email_sent_at >= $1',
             [monthStart]
         );
         if (sentRow) sent = (sentRow.c || 0) | 0;
         const openedRow = await db.queryOne(
-            "SELECT COUNT(*) as c FROM email_logs WHERE status = 'opened' AND sent_at >= $1",
+            'SELECT COUNT(*) as c FROM leads WHERE first_email_opened_at IS NOT NULL AND first_email_opened_at >= $1',
             [monthStart]
         );
         if (openedRow) opened = (openedRow.c || 0) | 0;
         const repliedRow = await db.queryOne(
-            "SELECT COUNT(*) as c FROM email_logs WHERE status = 'replied' AND sent_at >= $1",
+            'SELECT COUNT(*) as c FROM leads WHERE first_email_replied_at IS NOT NULL AND first_email_replied_at >= $1',
             [monthStart]
         );
         if (repliedRow) replied = (repliedRow.c || 0) | 0;
@@ -69,16 +70,30 @@ async function getEarningsWeekly(db, weeks = 12) {
     since.setDate(since.getDate() - n * 7);
     const sinceStr = since.toISOString().slice(0, 19).replace('T', ' ');
     const rows = await db.query(
-        'SELECT sent_at, status FROM email_logs WHERE direction = $1 AND sent_at >= $2',
-        ['outbound', sinceStr]
+        `SELECT first_email_sent_at, first_email_opened_at, first_email_replied_at
+         FROM leads
+         WHERE (first_email_sent_at IS NOT NULL AND first_email_sent_at >= $1)
+            OR (first_email_opened_at IS NOT NULL AND first_email_opened_at >= $1)
+            OR (first_email_replied_at IS NOT NULL AND first_email_replied_at >= $1)`,
+        [sinceStr]
     );
     const byWeek = {};
     for (const r of rows) {
-        const wk = weekKey(r.sent_at);
-        if (!byWeek[wk]) byWeek[wk] = { sent: 0, opened: 0, replied: 0 };
-        byWeek[wk].sent++;
-        if (r.status === 'opened') byWeek[wk].opened++;
-        if (r.status === 'replied') byWeek[wk].replied++;
+        if (r.first_email_sent_at) {
+            const wk = weekKey(r.first_email_sent_at);
+            if (!byWeek[wk]) byWeek[wk] = { sent: 0, opened: 0, replied: 0 };
+            byWeek[wk].sent++;
+        }
+        if (r.first_email_opened_at) {
+            const wk = weekKey(r.first_email_opened_at);
+            if (!byWeek[wk]) byWeek[wk] = { sent: 0, opened: 0, replied: 0 };
+            byWeek[wk].opened++;
+        }
+        if (r.first_email_replied_at) {
+            const wk = weekKey(r.first_email_replied_at);
+            if (!byWeek[wk]) byWeek[wk] = { sent: 0, opened: 0, replied: 0 };
+            byWeek[wk].replied++;
+        }
     }
     const sorted = Object.entries(byWeek)
         .sort((a, b) => a[0].localeCompare(b[0]))

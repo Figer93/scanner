@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { RefreshCw, Sparkles, Upload, ListPlus, Building2, Mail, Pencil, Star, ChevronDown, ChevronRight } from 'lucide-react';
+import { RefreshCw, Sparkles, Upload, ListPlus, Building2, Mail, Pencil, Star, ChevronDown, ChevronRight, TrendingUp } from 'lucide-react';
 import { outreachConversationUrl } from '../../constants/routes';
 import api from '../../api/client';
 import { GlassCard, Button, Input, Select } from '../../components/ui';
@@ -98,6 +98,17 @@ export default function CompanyActions({
         try { await api.patch(`/api/leads/${lead.id}`, { status: newStatus }); onLeadRefresh(); }
         catch { /* error handled by parent */ }
     }, [lead?.id, onLeadRefresh]);
+
+    const handleToggleConverted = useCallback(async () => {
+        if (!lead?.id) return;
+        const isConverted = Boolean(lead.converted_at);
+        try {
+            await api.patch(`/api/leads/${lead.id}`, { converted: !isConverted });
+            onLeadRefresh();
+        } catch {
+            // ignore
+        }
+    }, [lead?.id, lead?.converted_at, onLeadRefresh]);
 
     const handleAddToList = useCallback(async () => {
         const listId = addToListNewName.trim() ? null : parseInt(addToListSelectedId, 10);
@@ -193,6 +204,16 @@ export default function CompanyActions({
                         )}
                         <Button variant="secondary" size="sm" onClick={openModal} title="Add this lead to a list">
                             <ListPlus size={14} className="mr-1" aria-hidden="true" />Add to list
+                        </Button>
+                        <Button
+                            variant={lead.converted_at ? 'secondary' : 'primary'}
+                            size="sm"
+                            onClick={handleToggleConverted}
+                            title={lead.converted_at ? 'Unmark converted' : 'Mark converted'}
+                            aria-label={lead.converted_at ? 'Unmark converted' : 'Mark converted'}
+                        >
+                            <TrendingUp size={14} className="mr-1" aria-hidden="true" />
+                            {lead.converted_at ? 'Converted' : 'Mark converted'}
                         </Button>
                     </>
                 ) : (

@@ -19,6 +19,7 @@ export default function AppLayout({
   userName = 'User',
   darkMode = true,
   onThemeToggle,
+  navBadges = {},
   children,
 }) {
   return (
@@ -68,6 +69,7 @@ export default function AppLayout({
         >
           {NAV_ITEMS.map((item) => {
             const isActive = activeNavId === item.id;
+            const badgeCount = navBadges && typeof navBadges === 'object' ? (navBadges[item.id] || 0) : 0;
             return (
               <a
                 key={item.id}
@@ -84,7 +86,15 @@ export default function AppLayout({
                 <span className="text-base opacity-90" aria-hidden>
                   {item.icon}
                 </span>
-                {item.label}
+                <span className="flex-1 min-w-0 truncate">{item.label}</span>
+                {badgeCount > 0 && (
+                  <span
+                    className="ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[11px] font-semibold bg-red-500/90 text-white"
+                    aria-label={`${badgeCount} unread`}
+                  >
+                    {badgeCount > 99 ? '99+' : badgeCount}
+                  </span>
+                )}
               </a>
             );
           })}

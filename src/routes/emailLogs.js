@@ -20,6 +20,7 @@ const multer = require('multer');
 const {
     getDb, initSchema, getEmailLogs, getEmailLogByBrevoMessageId, updateEmailLogStatus,
     addEmailLog, updateLead, getProfile, setProfileKey, addLeadActivity, setEnrolmentStatusForLead,
+    setLeadMilestoneOnce,
 } = require('../services/database');
 const { STATUS } = require('../services/database');
 const { validate, validateQuery } = require('../middleware/validate');
@@ -33,6 +34,10 @@ const emailLogsQuerySchema = z.object({
     leadId: z.coerce.number().int().positive().optional(),
     listId: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().min(1).max(500).default(DEFAULT_EMAIL_LOG_LIMIT),
+});
+
+const inboxSummaryQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(2000).default(500),
 });
 
 const emailLogCreateSchema = z.object({
@@ -221,6 +226,31 @@ function mountEmailLogs(app) {
         }
     });
 
+    // GET /api/email-inbox/summary — last inbound timestamp per lead (for unread badges)
+    app.get('/api/email-inbox/summary', validateQuery(inboxSummaryQuerySchema), async (req, res) => {
+        try {
+            const db = await getDb();
+            initSchema(db);
+            const limit = req.query.limit;
+            const rows = await db.query(
+                `SELECT el.lead_id, MAX(el.sent_at) as last_inbound_at
+                 FROM email_logs el
+                 WHERE el.direction = 'inbound'
+                 GROUP BY el.lead_id
+                 ORDER BY MAX(el.sent_at) DESC
+                 LIMIT $1`,
+                [limit]
+            );
+            res.json((rows || []).map((r) => ({
+                lead_id: r.lead_id,
+                last_inbound_at: r.last_inbound_at ? String(r.last_inbound_at) : null,
+            })));
+        } catch (err) {
+            logger.error({ err }, 'Failed to get inbox summary');
+            res.status(500).json({ error: 'Failed to retrieve inbox summary' });
+        }
+    });
+
     app.post('/api/email-logs', validate(emailLogCreateSchema), async (req, res) => {
         try {
             const db = await getDb();
@@ -261,11 +291,13 @@ function mountEmailLogs(app) {
             if (event === 'opened' || event === 'open') {
                 await updateEmailLogStatus(db, logEntry.id, 'opened');
                 await updateLead(db, logEntry.lead_id, { status: STATUS.OPENED });
+                await setLeadMilestoneOnce(db, logEntry.lead_id, 'opened');
                 didUpdate = true;
             } else if (event === 'reply' || event === 'replied') {
                 await updateEmailLogStatus(db, logEntry.id, 'replied');
                 await updateLead(db, logEntry.lead_id, { status: STATUS.REPLIED });
                 await setEnrolmentStatusForLead(db, logEntry.lead_id, 'replied');
+                await setLeadMilestoneOnce(db, logEntry.lead_id, 'replied');
                 didUpdate = true;
             } else if (event === 'click') {
                 await addLeadActivity(db, logEntry.lead_id, 'email_clicked', 'Link clicked in email');
@@ -315,6 +347,7 @@ function mountEmailLogs(app) {
                 const body = (item.RawTextBody || item.ExtractedMarkdownMessage || '').trim() || null;
                 const fromAddr = item.From && typeof item.From === 'object' && item.From.Address ? String(item.From.Address).trim() : null;
                 const sentAt = (item.SentAtDate && typeof item.SentAtDate === 'string') ? item.SentAtDate.trim() : null;
+                await setLeadMilestoneOnce(db, logEntry.lead_id, 'replied', sentAt);
                 await addEmailLog(db, {
                     lead_id: logEntry.lead_id,
                     template_id: null,
@@ -367,6 +400,7 @@ function mountEmailLogs(app) {
             if (event === 'opened' || event === 'open') {
                 await updateEmailLogStatus(db, logEntry.id, 'opened');
                 await updateLead(db, logEntry.lead_id, { status: STATUS.OPENED });
+                await setLeadMilestoneOnce(db, logEntry.lead_id, 'opened');
                 didUpdate = true;
             } else if (event === 'clicked' || event === 'click') {
                 await addLeadActivity(db, logEntry.lead_id, 'email_clicked', 'Link clicked in email');
@@ -418,6 +452,7 @@ function mountEmailLogs(app) {
             await updateLead(db, outboundLog.lead_id, { status: STATUS.REPLIED });
             await setEnrolmentStatusForLead(db, outboundLog.lead_id, 'replied');
             await addLeadActivity(db, outboundLog.lead_id, 'email_replied', 'Inbound reply received');
+            await setLeadMilestoneOnce(db, outboundLog.lead_id, 'replied', sentAt || null);
 
             await addEmailLog(db, {
                 lead_id: outboundLog.lead_id,
@@ -458,10 +493,12 @@ function mountEmailLogs(app) {
             if (event === 'opened') {
                 if (logEntry && logEntry.id) await updateEmailLogStatus(db, logEntry.id, 'opened');
                 await applyToLead(STATUS.OPENED);
+                await setLeadMilestoneOnce(db, leadId, 'opened');
             } else if (event === 'replied') {
                 if (logEntry && logEntry.id) await updateEmailLogStatus(db, logEntry.id, 'replied');
                 await applyToLead(STATUS.REPLIED);
                 await setEnrolmentStatusForLead(db, leadId, 'replied');
+                await setLeadMilestoneOnce(db, leadId, 'replied');
             } else if (event === 'click') {
                 await addLeadActivity(db, leadId, 'email_clicked', 'Link clicked (test)');
             } else if (event === 'delivered') {

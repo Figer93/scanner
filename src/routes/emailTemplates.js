@@ -3,7 +3,7 @@
  */
 
 const { z } = require('zod');
-const { getDb, initSchema, getEmailTemplates, getEmailTemplateById, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate, getLeadById, getProfile, addEmailLog, updateLead, addLeadActivity, STATUS } = require('../services/database');
+const { getDb, initSchema, getEmailTemplates, getEmailTemplateById, createEmailTemplate, updateEmailTemplate, deleteEmailTemplate, getLeadById, getProfile, addEmailLog, updateLead, addLeadActivity, setLeadMilestoneOnce, STATUS } = require('../services/database');
 const { resolveTemplateVariables } = require('../lib/templateVars');
 const logger = require('../lib/logger');
 const { sendMailgunEmail } = require('../services/mailgun');
@@ -212,7 +212,7 @@ function mountEmailTemplates(app) {
 
             const senderEmail = mailgunFrom || senderEmailEnv || null;
 
-            addEmailLog(db, {
+            await addEmailLog(db, {
                 lead_id: leadId,
                 template_id: id,
                 brevo_message_id: null,
@@ -225,8 +225,9 @@ function mountEmailTemplates(app) {
                 from_email: senderEmail,
                 to_email: toEmail.trim(),
             });
-            updateLead(db, leadId, { status: STATUS.EMAIL_SENT });
-            addLeadActivity(db, leadId, 'email_sent', `Email sent to ${toEmail}: "${subject || '(No subject)'}"`);
+            await setLeadMilestoneOnce(db, leadId, 'sent');
+            await updateLead(db, leadId, { status: STATUS.EMAIL_SENT });
+            await addLeadActivity(db, leadId, 'email_sent', `Email sent to ${toEmail}: "${subject || '(No subject)'}"`);
 
             res.json({ ok: true, to: toEmail, subject: subject || '(No subject)' });
         } catch (err) {

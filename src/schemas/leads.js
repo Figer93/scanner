@@ -55,6 +55,7 @@ const leadUpdateSchema = z.object({
     assigned_to: z.string().nullable().optional(),
     emails: z.array(z.string()).optional(),
     phones: z.array(z.string()).optional(),
+    converted: z.boolean().optional(),
 }).refine(
     (data) => Object.keys(data).length > 0,
     { message: 'No valid fields to update' }

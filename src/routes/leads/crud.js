@@ -19,6 +19,7 @@ const {
     getLeadActivities, addLeadActivity,
     getProfile, addEmailLog,
     deleteLeadsByIds, getListsByCompanyNumbers,
+    ensureLeadEnrichedAt, setLeadMilestoneOnce, setLeadConverted,
     STATUS,
 } = require('../../services/database');
 const { getResolvedKeys } = require('../../services/usageTracker');
@@ -129,6 +130,7 @@ function mountLeadsCrud(app) {
                 await addLeadActivity(db, id, 'email_sent', `Email sent (bulk): "${subject}"`);
                 await updateLead(db, id, { status: STATUS.EMAIL_SENT });
                 await addLeadActivity(db, id, 'status_change', 'Status changed to Email Sent');
+                await setLeadMilestoneOnce(db, id, 'sent');
                 updated++;
             }
             res.json({ ok: true, updated });
@@ -185,6 +187,7 @@ function mountLeadsCrud(app) {
         if (req.body.status !== undefined) updates.status = req.body.status;
         if (req.body.score !== undefined) updates.score = req.body.score;
         if (req.body.outreach_draft !== undefined) updates.outreach_draft = req.body.outreach_draft;
+        if (req.body.converted !== undefined) updates.converted = req.body.converted;
         if (req.body.assigned_to !== undefined) {
             updates.assigned_to = req.body.assigned_to == null || req.body.assigned_to === ''
                 ? null
@@ -198,7 +201,15 @@ function mountLeadsCrud(app) {
                 const lead = await getLeadById(db, id);
                 if (lead) await addLeadActivity(db, id, 'status_change', `Status changed to ${updates.status}`);
             }
+            const convertedFlag = updates.converted;
+            delete updates.converted;
             await updateLead(db, id, updates);
+            if (updates.status === STATUS.ENRICHED) {
+                await ensureLeadEnrichedAt(db, id);
+            }
+            if (convertedFlag !== undefined) {
+                await setLeadConverted(db, id, Boolean(convertedFlag));
+            }
             const updated = await getLeadById(db, id);
             if (updated && (updates.status === 'Qualified' || updates.status === 'Converted')) {
                 await fireWebhookIfConfigured(db, updated, 'status', { newStatus: updates.status }).catch(() => {});
@@ -306,6 +317,7 @@ function mountLeadsCrud(app) {
                 from_email: senderEmail,
                 to_email: toEmail.trim(),
             });
+            await setLeadMilestoneOnce(db, id, 'sent');
             await updateLead(db, id, { status: STATUS.EMAIL_SENT });
             await addLeadActivity(db, id, 'email_sent', `Reply sent to ${toEmail}: "${subject}"`);
             res.json({ ok: true, to: toEmail, subject });

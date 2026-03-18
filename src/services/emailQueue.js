@@ -15,6 +15,7 @@ const {
     getSequenceSteps,
     updateEnrolment,
     addEmailLog,
+    setLeadMilestoneOnce,
     updateLead,
     STATUS,
 } = require('./database');
@@ -93,6 +94,7 @@ async function sendSequenceEmail(db, { leadId, templateId, profile }) {
             from_email: senderEmail,
             to_email: toEmail,
         });
+        await setLeadMilestoneOnce(db, leadId, 'sent');
         await updateLead(db, leadId, { status: STATUS.EMAIL_SENT });
         return { ok: true, brevoMessageId };
     } catch (err) {

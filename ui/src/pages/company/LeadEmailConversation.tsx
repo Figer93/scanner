@@ -42,6 +42,8 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
             return Array.isArray(d) ? d : [];
         },
         staleTime: 15_000,
+        refetchInterval: 5_000,
+        refetchIntervalInBackground: true,
     });
 
     const sendReplyMutation = useMutation({
@@ -65,7 +67,21 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
 
     const thread = useMemo(() => {
         const copy = Array.isArray(messages) ? [...messages] : [];
-        copy.sort((a, b) => Date.parse(a.sent_at) - Date.parse(b.sent_at));
+        const toMs = (ts: string) => {
+            const s = (ts || '').toString().trim();
+            if (!s) return NaN;
+            const normalized = s.includes('T') ? s : s.replace(' ', 'T');
+            const withZone = /[zZ]|[+\-]\d{2}:?\d{2}$/.test(normalized) ? normalized : `${normalized}Z`;
+            return Date.parse(withZone);
+        };
+        copy.sort((a, b) => {
+            const am = toMs(a.sent_at);
+            const bm = toMs(b.sent_at);
+            if (Number.isFinite(am) && Number.isFinite(bm)) return am - bm;
+            if (Number.isFinite(am)) return -1;
+            if (Number.isFinite(bm)) return 1;
+            return (a.id || 0) - (b.id || 0);
+        });
         return copy;
     }, [messages]);
 

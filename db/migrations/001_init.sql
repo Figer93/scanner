@@ -13,6 +13,12 @@ CREATE TABLE IF NOT EXISTS leads (
     phones TEXT,
     contact_form INTEGER DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'New',
+    -- Milestone timestamps (set once per lead, after Enriched)
+    enriched_at TIMESTAMPTZ,
+    first_email_sent_at TIMESTAMPTZ,
+    first_email_opened_at TIMESTAMPTZ,
+    first_email_replied_at TIMESTAMPTZ,
+    converted_at TIMESTAMPTZ,
     ice_breaker TEXT,
     source TEXT DEFAULT 'json_file',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -34,6 +40,11 @@ CREATE TABLE IF NOT EXISTS leads (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_company_number ON leads(company_number);
 CREATE INDEX IF NOT EXISTS idx_leads_website ON leads(website);
+CREATE INDEX IF NOT EXISTS idx_leads_enriched_at ON leads(enriched_at);
+CREATE INDEX IF NOT EXISTS idx_leads_first_email_sent_at ON leads(first_email_sent_at);
+CREATE INDEX IF NOT EXISTS idx_leads_first_email_opened_at ON leads(first_email_opened_at);
+CREATE INDEX IF NOT EXISTS idx_leads_first_email_replied_at ON leads(first_email_replied_at);
+CREATE INDEX IF NOT EXISTS idx_leads_converted_at ON leads(converted_at);
 
 CREATE TABLE IF NOT EXISTS profile (
     key TEXT PRIMARY KEY,
