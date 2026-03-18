@@ -36,10 +36,11 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
     const [replySubject, setReplySubject] = useState('');
     const [replyBody, setReplyBody] = useState('');
     const [replyInReplyToMessageId, setReplyInReplyToMessageId] = useState<string | null>(null);
+    const [threadMessages, setThreadMessages] = useState<EmailMessage[]>([]);
     const threadViewportRef = useRef<HTMLDivElement | null>(null);
     const lastLeadIdRef = useRef<number | null>(null);
 
-    const { data: messages = [], isLoading } = useQuery<EmailMessage[]>({
+    const { data: messages, isLoading, isError, error } = useQuery<EmailMessage[]>({
         queryKey: ['email-logs', leadId],
         queryFn: async () => {
             const d = await api.get(`/api/email-logs?leadId=${leadId}&limit=50`);
@@ -49,6 +50,17 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
         refetchInterval: 5_000,
         refetchIntervalInBackground: true,
     });
+
+    // Keep the last successfully loaded thread visible.
+    // If refetch fails, we do NOT want to flash an empty state / loader.
+    useEffect(() => {
+        if (Array.isArray(messages)) setThreadMessages(messages);
+    }, [messages]);
+
+    useEffect(() => {
+        // Switching leads should reset the thread immediately.
+        setThreadMessages([]);
+    }, [leadId]);
 
     const sendReplyMutation = useMutation({
         mutationFn: (payload: { subject: string; body: string; inReplyToMessageId?: string }) =>
@@ -83,11 +95,11 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
     }, []);
 
     const thread = useMemo(() => {
-        const copy = Array.isArray(messages) ? [...messages] : [];
+        const copy = Array.isArray(threadMessages) ? [...threadMessages] : [];
         // Rely on insertion order in email_logs: lower id = older message.
         copy.sort((a, b) => (a.id || 0) - (b.id || 0));
         return copy;
-    }, [messages]);
+    }, [threadMessages]);
 
     useEffect(() => {
         // Chat UX: only auto-scroll if the user is already near the bottom.
@@ -120,7 +132,7 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
     return (
         <div className="flex-1 min-h-0 flex flex-col">
             <div ref={threadViewportRef} className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-2">
-                {isLoading ? (
+                {isLoading && threadMessages.length === 0 ? (
                     <p className="text-sm text-white/50">Loading…</p>
                 ) : thread.length === 0 ? (
                     <div className="h-full flex items-center justify-center">
@@ -131,6 +143,11 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
                             <p className="mt-2 text-xs text-white/40">
                                 To see inbound replies here, set up the Brevo Inbound webhook in Profile → Email tracking.
                             </p>
+                            {isError && (
+                                <p className="mt-3 text-xs text-red-300" role="alert">
+                                    {error instanceof Error ? error.message : 'Failed to load email logs'}
+                                </p>
+                            )}
                         </div>
                     </div>
                 ) : (
