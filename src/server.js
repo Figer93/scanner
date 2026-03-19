@@ -21,7 +21,8 @@ const { initServerContext, persistAndEmitLog } = require('./serverContext');
 const { mountAll } = require('./routes');
 
 const ALLOWED_ORIGINS = [
-    'https://scanner-production-3048.up.railway.app',
+    'https://dashboard.foundlystart.co.uk',
+    'https://foundlystart.co.uk',
     ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()) : []),
 ];
 
