@@ -82,6 +82,24 @@ If you want **email replies** to appear in **Outreach → Conversations**, confi
   - If a lead match is found, the email will be inserted as an inbound `email_logs` row so it appears in **Outreach → Conversations**.
   - These messages are labeled as `Direct message` in the thread UI (stored in `email_logs.matched_via = sender_fallback`).
 
+### Main-domain welcome page + contact form
+
+This app serves two UIs based on hostname:
+
+- `https://foundlystart.co.uk` (main domain): public **welcome page** with a contact form.
+- `https://dashboard.foundlystart.co.uk` (subdomain): the CHScanner dashboard (internal UI).
+
+The welcome page contact form submits to:
+
+- `POST /api/welcome/contact`
+
+To make the contact form send email, ensure Mailgun sending is configured (used by `src/services/mailgun.js`):
+
+- `MAILGUN_API_KEY` and `MAILGUN_DOMAIN`
+- `MAILGUN_SENDER_EMAIL` (or Profile key `sender_email`) so the app knows which address to send from.
+
+Replies to the visitor are set via the email `Reply-To` header.
+
 ### Outreach tracking model (Sent / Opened / Replied / Converted)
 
 CHScanner tracks outreach performance using **one-time milestone timestamps per lead** (to avoid double-counting when you send multiple emails or have long reply threads).

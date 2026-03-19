@@ -14,6 +14,7 @@ import { api } from './api/client';
 import { endpoints } from './api/endpoints';
 import { getPageFromHash } from './constants/routes';
 import { useSocketLogs } from './hooks/useSocket';
+import WelcomePage from './pages/welcome/WelcomePage';
 
 const INBOX_LAST_SEEN_KEY = 'chscanner_inbox_last_seen_v1';
 
@@ -193,10 +194,19 @@ function AppInner() {
   );
 }
 
+function isDashboardHost(hostname) {
+  if (!hostname) return true;
+  const h = String(hostname).toLowerCase().trim();
+  if (h === 'localhost' || h === '127.0.0.1') return true;
+  return h.startsWith('dashboard.');
+}
+
 export default function App() {
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const showDashboard = isDashboardHost(hostname);
   return (
     <QueryClientProvider client={queryClient}>
-      <AppInner />
+      {showDashboard ? <AppInner /> : <WelcomePage />}
     </QueryClientProvider>
   );
 }

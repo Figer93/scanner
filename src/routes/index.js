@@ -21,6 +21,7 @@ const { mountDb } = require('./db');
 const { mountCrm } = require('./crm');
 const { mountSchedule } = require('./schedule');
 const { mountAuditWebhooks } = require('./auditWebhooks');
+const { mountWelcome } = require('./welcome');
 
 function mountAll(app, context = {}) {
     mountHealth(app);
@@ -41,6 +42,7 @@ function mountAll(app, context = {}) {
     mountCrm(app);
     mountSchedule(app, context);
     mountAuditWebhooks(app);
+    mountWelcome(app);
 }
 
 module.exports = { mountAll };
