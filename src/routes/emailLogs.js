@@ -41,6 +41,12 @@ const inboxSummaryQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(2000).default(500),
 });
 
+// GET /api/email-inbox/sidebar — conversation sidebar data (minimal lead fields + last message timestamps).
+// This avoids loading the entire `leads` table on the conversations page.
+const inboxSidebarQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(2000).default(500),
+});
+
 const emailLogCreateSchema = z.object({
     lead_id: z.coerce.number().int().positive({ message: 'lead_id is required' }),
     template_id: z.coerce.number().int().positive().nullable().optional(),
@@ -253,6 +259,57 @@ function mountEmailLogs(app) {
         } catch (err) {
             logger.error({ err }, 'Failed to get inbox summary');
             res.status(500).json({ error: 'Failed to retrieve inbox summary' });
+        }
+    });
+
+    // GET /api/email-inbox/sidebar — minimal lead fields + last inbound/overall message timestamps.
+    app.get('/api/email-inbox/sidebar', validateQuery(inboxSidebarQuerySchema), async (req, res) => {
+        try {
+            const db = await getDb();
+            initSchema(db);
+            const limit = req.query.limit;
+
+            const rows = await db.query(
+                `SELECT
+                    l.id as lead_id,
+                    l.company_name,
+                    l.company_number,
+                    l.emails,
+                    MAX(CASE WHEN el.direction = 'inbound' THEN el.sent_at ELSE NULL END) as last_inbound_at,
+                    MAX(el.sent_at) as last_message_at
+                 FROM email_logs el
+                 JOIN leads l ON l.id = el.lead_id
+                 GROUP BY l.id, l.company_name, l.company_number, l.emails
+                 ORDER BY MAX(el.sent_at) DESC
+                 LIMIT $1`,
+                [limit]
+            );
+
+            const items = (rows || []).map((r) => {
+                let emails = [];
+                if (r.emails) {
+                    try {
+                        const parsed = JSON.parse(r.emails);
+                        emails = Array.isArray(parsed) ? parsed.filter((v) => typeof v === 'string') : [];
+                    } catch (_) {
+                        emails = [];
+                    }
+                }
+
+                return {
+                    id: r.lead_id,
+                    company_name: r.company_name || '',
+                    company_number: r.company_number || '',
+                    emails,
+                    last_inbound_at: r.last_inbound_at ? String(r.last_inbound_at) : null,
+                    last_message_at: r.last_message_at ? String(r.last_message_at) : null,
+                };
+            });
+
+            res.json(items);
+        } catch (err) {
+            logger.error({ err }, 'Failed to get inbox sidebar');
+            res.status(500).json({ error: 'Failed to retrieve inbox sidebar' });
         }
     });
 

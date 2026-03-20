@@ -11,6 +11,7 @@ const { Server: SocketServer } = require('socket.io');
 const cors = require('cors');
 const cron = require('node-cron');
 const rateLimit = require('express-rate-limit');
+const compression = require('compression');
 
 const config = require('./config');
 const logger = require('./lib/logger');
@@ -109,13 +110,60 @@ app.use('/api/', apiLimiter);
 
 app.use(express.json());
 
+// Optional endpoint timing logs for debugging slow pages.
+// Enable with: LOG_API_TIMINGS=1
+if (process.env.LOG_API_TIMINGS === '1') {
+    const timedPathMatchers = [
+        /^\/api\/leads$/,
+        /^\/api\/leads\/in-lists/,
+        /^\/api\/leads\/enriched/,
+        /^\/api\/ch-cache\/search/,
+        /^\/api\/email-inbox\/summary/,
+        /^\/api\/email-inbox\/sidebar/,
+    ];
+
+    app.use((req, res, next) => {
+        if (!timedPathMatchers.some((re) => re.test(req.path))) return next();
+        const start = process.hrtime.bigint();
+        res.on('finish', () => {
+            const ms = Number(process.hrtime.bigint() - start) / 1e6;
+            logger.info(
+                {
+                    method: req.method,
+                    path: req.path,
+                    status: res.statusCode,
+                    ms: Math.round(ms * 10) / 10,
+                },
+                'api-timing'
+            );
+        });
+        next();
+    });
+}
+
 const distPath = path.join(__dirname, '..', 'dist');
 const indexHtml = path.join(distPath, 'index.html');
 if (!fs.existsSync(indexHtml)) {
     logger.error({ distPath }, 'UI build missing: dist/index.html not found. Run "npm run build" before start (or use Dockerfile which runs it).');
     process.exit(1);
 }
-app.use(express.static(distPath));
+// Vite assets are typically content-hashed. Cache them aggressively to speed up
+// first loads and subsequent navigations. Keep index.html short-lived.
+app.use(
+    compression(),
+    express.static(distPath, {
+        etag: true,
+        maxAge: '1y',
+        immutable: true,
+        setHeaders: (res, filePath) => {
+            if (path.basename(filePath) === 'index.html') {
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+                return;
+            }
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        },
+    })
+);
 
 mountAll(app, { startScheduledRuns });
 

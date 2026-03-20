@@ -53,8 +53,11 @@ export default function LeadsPage() {
     }, []);
 
     // ── Server state (Enriched = leads with contact point, optionally filtered by active list; Discovery = raw CH cache) ──
-    const enriched = useEnrichedLeadsSearch({ listId: listIdForQuery ?? undefined });
-    const discovery = useChCacheSearch();
+    const enriched = useEnrichedLeadsSearch(
+        { listId: listIdForQuery ?? undefined },
+        viewMode === 'enriched'
+    );
+    const discovery = useChCacheSearch(500, viewMode === 'discovery');
 
     const companies =
         viewMode === 'enriched'

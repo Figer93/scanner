@@ -11,7 +11,6 @@ import Modal from '../components/ui/Modal';
 import EmptyState from '../components/ui/EmptyState';
 import { formatDateTime } from '../lib/utils';
 import { useLists } from '../hooks/useLists';
-import { useLeads } from '../hooks/useLeads';
 import LeadEmailConversation from './company/LeadEmailConversation';
 import SignatureTab from './outreach/SignatureTab';
 
@@ -48,6 +47,15 @@ interface Sequence {
     steps?: SequenceStep[];
 }
 
+interface InboxSidebarLead {
+    id: number;
+    company_name: string;
+    company_number: string;
+    emails: string[];
+    last_inbound_at: string | null;
+    last_message_at: string | null;
+}
+
 const SEQUENCE_CONDITIONS = [
     { value: 'always', label: 'Always send' },
     { value: 'not_opened', label: 'Not opened' },
@@ -82,7 +90,6 @@ interface OutreachProps {
 export default function Outreach({ initialConversationLeadId = null }: OutreachProps) {
     const queryClient = useQueryClient();
     const { data: lists = [] } = useLists();
-    const { data: leads = [] } = useLeads();
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formName, setFormName] = useState('');
@@ -134,12 +141,10 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
         enabled: activeTab === 'sequences',
     });
 
-    const { data: inboxSummary = [] } = useQuery<
-        Array<{ lead_id: number; last_inbound_at: string | null; last_message_at: string | null }>
-    >({
-        queryKey: ['email-inbox-summary'],
+    const { data: inboxSidebarLeads = [] } = useQuery<InboxSidebarLead[]>({
+        queryKey: ['email-inbox-sidebar'],
         queryFn: async () => {
-            const d = await api.get('/api/email-inbox/summary?limit=2000');
+            const d = await api.get('/api/email-inbox/sidebar?limit=2000');
             return Array.isArray(d) ? d : [];
         },
         staleTime: 10_000,
@@ -147,16 +152,16 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
         enabled: activeTab === 'conversations',
     });
 
-    // If a conversation is preselected (e.g. from Company → Email), mark it as seen once we have inbox summary.
+    // If a conversation is preselected (e.g. from Company → Email), mark it as seen once we have sidebar data.
     useEffect(() => {
         if (activeTab !== 'conversations') return;
         const id = conversationLeadId ? parseInt(conversationLeadId, 10) : NaN;
         if (!Number.isFinite(id) || id <= 0) return;
-        const lastInbound = inboxSummary.find((x) => x.lead_id === id)?.last_inbound_at;
+        const lastInbound = inboxSidebarLeads.find((x) => x.id === id)?.last_inbound_at;
         const lastSeen = loadLastSeenMap();
         lastSeen[String(id)] = lastInbound || new Date().toISOString();
         saveLastSeenMap(lastSeen);
-    }, [activeTab, conversationLeadId, inboxSummary]);
+    }, [activeTab, conversationLeadId, inboxSidebarLeads]);
 
     const createSequenceMutation = useMutation({
         mutationFn: (name: string) => api.post('/api/sequences', { name }),
@@ -269,7 +274,7 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
         sendTestMutation.mutate({ templateId: previewTemplate.id, leadId, toEmail: testEmail.trim() });
     }, [previewTemplate, previewLeadId, testEmail, sendTestMutation]);
 
-    const previewLead = previewLeadId ? leads.find((l) => l.id === parseInt(previewLeadId, 10)) : null;
+    const previewLead = previewLeadId ? inboxSidebarLeads.find((l) => l.id === parseInt(previewLeadId, 10)) : null;
     const leadContactEmail = (() => {
         const raw = previewLead?.emails?.[0];
         if (!raw || typeof raw !== 'string' || !raw.trim()) return null;
@@ -429,10 +434,9 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                     const email = l.emails?.[0];
                     return email && typeof email === 'string' && !['not found', 'unknown'].includes(email.trim().toLowerCase());
                 };
-                const leadsWithEmail = leads.filter(hasValidEmail);
+                const leadsWithEmail = inboxSidebarLeads.filter(hasValidEmail);
                 const preselectedId = conversationLeadId ? parseInt(conversationLeadId, 10) : null;
-                const preselectedLead = preselectedId != null && !Number.isNaN(preselectedId) ? leads.find((l) => l.id === preselectedId) : null;
-                const inboxByLeadId = new Map(inboxSummary.map((x) => [x.lead_id, x] as const));
+                const preselectedLead = preselectedId != null && !Number.isNaN(preselectedId) ? inboxSidebarLeads.find((l) => l.id === preselectedId) : null;
 
                 const sidebarLeadsRaw =
                     preselectedLead && !leadsWithEmail.some((l) => l.id === preselectedLead.id)
@@ -441,8 +445,8 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
 
                 // Sort by "latest message timestamp" per conversation, newest first.
                 const sidebarLeads = [...sidebarLeadsRaw].sort((a, b) => {
-                    const aLastMessageAt = inboxByLeadId.get(a.id)?.last_message_at;
-                    const bLastMessageAt = inboxByLeadId.get(b.id)?.last_message_at;
+                    const aLastMessageAt = a.last_message_at;
+                    const bLastMessageAt = b.last_message_at;
                     const aTime = aLastMessageAt ? new Date(aLastMessageAt).getTime() : 0;
                     const bTime = bLastMessageAt ? new Date(bLastMessageAt).getTime() : 0;
                     if (bTime !== aTime) return bTime - aTime;
@@ -452,13 +456,13 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                 const handleSelectLead = (leadId: number) => {
                     setConversationLeadId(String(leadId));
                     const lastSeen = loadLastSeenMap();
-                    const lastInbound = inboxSummary.find((x) => x.lead_id === leadId)?.last_inbound_at;
+                    const lastInbound = inboxSidebarLeads.find((x) => x.id === leadId)?.last_inbound_at;
                     lastSeen[String(leadId)] = lastInbound || new Date().toISOString();
                     saveLastSeenMap(lastSeen);
                 };
 
                 const selectedId = conversationLeadId ? parseInt(conversationLeadId, 10) : null;
-                const selectedLead = selectedId != null && !Number.isNaN(selectedId) ? leads.find((l) => l.id === selectedId) : null;
+                const selectedLead = selectedId != null && !Number.isNaN(selectedId) ? inboxSidebarLeads.find((l) => l.id === selectedId) : null;
                 const selectedEmail = selectedLead?.emails?.[0];
                 const selectedEmailValid =
                     selectedEmail && typeof selectedEmail === 'string' && !['not found', 'unknown'].includes(selectedEmail.trim().toLowerCase());
@@ -489,7 +493,7 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                                                 const label = lead.company_name || `Lead #${lead.id}`;
                                                 const isActive = lead.id === selectedId;
                                                 const lastSeen = loadLastSeenMap();
-                                                const lastInbound = inboxByLeadId.get(lead.id)?.last_inbound_at;
+                                                const lastInbound = lead.last_inbound_at;
                                                 const unread =
                                                     Boolean(lastInbound) &&
                                                     (!lastSeen[String(lead.id)] || new Date(lastInbound as string).getTime() > new Date(lastSeen[String(lead.id)]).getTime());
@@ -605,7 +609,7 @@ export default function Outreach({ initialConversationLeadId = null }: OutreachP
                                     aria-label="Select a lead to preview variables"
                                 >
                                     <option value="">Select a lead…</option>
-                                    {leads.map((l) => (
+                                    {inboxSidebarLeads.map((l) => (
                                         <option key={l.id} value={String(l.id)}>
                                             {l.company_name || `Lead #${l.id}`}
                                         </option>

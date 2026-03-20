@@ -27,7 +27,7 @@ export const enrichedLeadsKeys = {
     search: (params: EnrichedSearchParams) => [...enrichedLeadsKeys.all, 'search', params] as const,
 };
 
-export function useEnrichedLeadsSearch(params: EnrichedSearchParams = {}) {
+export function useEnrichedLeadsSearch(params: EnrichedSearchParams = {}, enabled: boolean = true) {
     const limit = Math.min(500, Math.max(1, params.limit ?? DEFAULT_LIMIT));
     const queryKey = enrichedLeadsKeys.search({ ...params, limit });
 
@@ -45,6 +45,7 @@ export function useEnrichedLeadsSearch(params: EnrichedSearchParams = {}) {
             const items = data?.items ?? [];
             return Array.isArray(items) ? items : [];
         },
+        enabled,
         staleTime: 60_000,
     });
 }

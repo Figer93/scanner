@@ -20,7 +20,7 @@ export const chCacheKeys = {
     count: () => [...chCacheKeys.all, 'count'] as const,
 };
 
-export function useChCacheSearch(limit: number = DEFAULT_LIMIT) {
+export function useChCacheSearch(limit: number = DEFAULT_LIMIT, enabled: boolean = true) {
     return useQuery<CHCompany[]>({
         queryKey: chCacheKeys.search(limit),
         queryFn: async () => {
@@ -28,6 +28,7 @@ export function useChCacheSearch(limit: number = DEFAULT_LIMIT) {
             const items = data?.items ?? [];
             return Array.isArray(items) ? items : [];
         },
+        enabled,
         staleTime: 60_000,
     });
 }
