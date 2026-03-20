@@ -54,7 +54,7 @@ export const useUIStore = create<UIState & UIActions>()(
             setKanbanCompact: (compact) => set({ kanbanCompact: compact }),
         }),
         {
-            name: 'chscanner-ui',
+            name: 'foundlystart-ui',
             // Only persist user preferences, not ephemeral UI state
             partialize: (state) => ({
                 sidebarOpen: state.sidebarOpen,

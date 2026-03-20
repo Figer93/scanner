@@ -1,4 +1,4 @@
-# CHScanner
+# Foundly Start
 
 **Automated UK business lead enrichment and outreach.** Load companies from Companies House / Google Maps / LinkedIn → find websites (Serper) → scrape contacts (Playwright) → score + draft outreach (Google AI) → store in **Supabase Postgres**. Deployed on **Railway**.
 
@@ -40,7 +40,7 @@
 
 ## Railway deployment (primary)
 
-CHScanner is intended to run **fully in Railway + Supabase** (no local DB).
+Foundly Start is intended to run **fully in Railway + Supabase** (no local DB).
 
 - **Deploy**
   - Railway builds the app (UI + backend) and runs `node src/server.js`.
@@ -67,7 +67,7 @@ If you want **email replies** to appear in **Outreach → Conversations**, confi
 
 - **1. Set Reply-To**
   - Set `MAILGUN_REPLY_TO` (or Profile key `mailgun_reply_to`) to an address on your Mailgun domain, e.g. `replies@mg.yourdomain.com`.
-  - CHScanner will set the outbound email header `Reply-To` to that value so replies go to Mailgun (not to a random/non-existent mailbox).
+  - Foundly Start will set the outbound email header `Reply-To` to that value so replies go to Mailgun (not to a random/non-existent mailbox).
 
 - **2. Create a Mailgun Route**
   - In Mailgun → `Receiving` → `Routes`, add a Route that matches that address (or your whole Mailgun domain).
@@ -78,7 +78,7 @@ If you want **email replies** to appear in **Outreach → Conversations**, confi
   - The reply should create an inbound message in the thread and set the lead to **Replied**.
 
 - **4. Direct inbound emails (no reply headers)**
-  - If a customer sends an email that is NOT a reply (no `In-Reply-To` / `Message-Id` match to a previous outbound message), CHScanner will try to correlate it by the sender email address to a lead in `leads.emails`.
+  - If a customer sends an email that is NOT a reply (no `In-Reply-To` / `Message-Id` match to a previous outbound message), Foundly Start will try to correlate it by the sender email address to a lead in `leads.emails`.
   - If a lead match is found, the email will be inserted as an inbound `email_logs` row so it appears in **Outreach → Conversations**.
   - These messages are labeled as `Direct message` in the thread UI (stored in `email_logs.matched_via = sender_fallback`).
 
@@ -87,7 +87,7 @@ If you want **email replies** to appear in **Outreach → Conversations**, confi
 This app serves two UIs based on hostname:
 
 - `https://foundlystart.co.uk` (main domain): public **welcome page** with a contact form.
-- `https://dashboard.foundlystart.co.uk` (subdomain): the CHScanner dashboard (internal UI).
+- `https://dashboard.foundlystart.co.uk` (subdomain): the Foundly Start dashboard (internal UI).
 
 The welcome page contact form submits to:
 
@@ -102,7 +102,7 @@ Replies to the visitor are set via the email `Reply-To` header.
 
 ### Outreach tracking model (Sent / Opened / Replied / Converted)
 
-CHScanner tracks outreach performance using **one-time milestone timestamps per lead** (to avoid double-counting when you send multiple emails or have long reply threads).
+Foundly Start tracks outreach performance using **one-time milestone timestamps per lead** (to avoid double-counting when you send multiple emails or have long reply threads).
 
 - **Starts after Enriched**: milestones are only recorded once a lead has `enriched_at` (i.e. after it first becomes **Enriched**).
 - **One-time per lead**:
@@ -132,7 +132,7 @@ This makes the Dashboard counters stable and prevents “further conversation”
 ## Project structure
 
 ```
-CHScanner/
+FoundlyStart/
 ├── src/                 # Backend: server, pipeline, routes, services
 ├── ui/                  # Frontend: React + Vite (pages, components, api, hooks)
 ├── scripts/             # Build and sync (copy-ui-dist, copy-export-html, sync-companies-house)
@@ -259,4 +259,4 @@ Full list and pipeline/Serper/CH errors: [TROUBLESHOOTING.md](TROUBLESHOOTING.md
 
 ## License & support
 
-CHScanner is provided as-is. For bugs or feature requests, open an issue.
+Foundly Start is provided as-is. For bugs or feature requests, open an issue.

@@ -165,7 +165,7 @@ function mountAuditWebhooks(app) {
             await sendAudit({
                 action: req.body.action,
                 actor: req.user?.sub || 'admin',
-                resource: req.body.resource || 'chscanner',
+                resource: req.body.resource || 'foundly_start',
                 meta: { ok: true },
             });
             res.json({ ok: true });

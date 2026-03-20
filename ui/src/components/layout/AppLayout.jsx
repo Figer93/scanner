@@ -31,7 +31,7 @@ export default function AppLayout({
             href="#/"
             className="text-[15px] font-semibold text-white hover:text-indigo-300 transition-colors tracking-tight"
           >
-            CHScanner
+            Foundly Start
           </a>
           {page !== 'home' && (
             <a

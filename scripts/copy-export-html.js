@@ -7,7 +7,7 @@ const path = require('path');
 
 const src = path.join(__dirname, '..', 'ui', 'export', 'index.html');
 const outDir = path.join(__dirname, '..', 'export');
-const dest = path.join(outDir, 'chscanner.html');
+const dest = path.join(outDir, 'foundly-start.html');
 
 if (!fs.existsSync(src)) {
   console.error('Single-file build not found. Run "npm run build:single" from the ui folder first.');
@@ -16,4 +16,4 @@ if (!fs.existsSync(src)) {
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 fs.copyFileSync(src, dest);
 console.log('Exported:', path.relative(path.join(__dirname, '..'), dest));
-console.log('Open export/chscanner.html in a browser. (API/Socket.IO need the backend for full functionality.)');
+console.log('Open export/foundly-start.html in a browser. (API/Socket.IO need the backend for full functionality.)');

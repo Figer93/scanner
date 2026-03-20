@@ -1,4 +1,4 @@
--- CHScanner PostgreSQL schema (Supabase-compatible).
+-- Foundly Start PostgreSQL schema (Supabase-compatible).
 -- Run this once when using DATABASE_URL (e.g. Supabase).
 
 -- Core tables

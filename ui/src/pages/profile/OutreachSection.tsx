@@ -114,7 +114,7 @@ export default function OutreachSection({ profile, onMessage }: OutreachSectionP
                     <Input
                         id="outreach-sender-name"
                         type="text"
-                        placeholder="Alex from CHScanner"
+                        placeholder="Alex from Foundly Start"
                         value={senderName}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSenderName(e.target.value)}
                         className="w-full"

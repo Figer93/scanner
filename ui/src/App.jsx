@@ -16,7 +16,7 @@ import { getPageFromHash } from './constants/routes';
 import { useSocketLogs } from './hooks/useSocket';
 import WelcomePage from './pages/welcome/WelcomePage';
 
-const INBOX_LAST_SEEN_KEY = 'chscanner_inbox_last_seen_v1';
+const INBOX_LAST_SEEN_KEY = 'foundlystart_inbox_last_seen_v1';
 
 function loadLastSeenMap() {
   try {
@@ -60,7 +60,7 @@ function useHashRoute() {
   return state;
 }
 
-const THEME_STORAGE_KEY = 'chscanner_theme';
+const THEME_STORAGE_KEY = 'foundlystart_theme';
 
 function AppInner() {
   const { page, leadId, companyNumber, conversationLeadId } = useHashRoute();

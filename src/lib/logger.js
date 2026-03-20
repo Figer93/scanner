@@ -26,7 +26,7 @@ const opts = {
       return { level: label };
     },
   },
-  base: { service: 'chscanner' },
+  base: { service: 'foundly-start' },
 };
 if (config.LOG_PRETTY && !hasFile) {
   opts.transport = {

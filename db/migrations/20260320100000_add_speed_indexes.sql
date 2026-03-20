@@ -1,4 +1,4 @@
--- Performance indexes for CHScanner:
+-- Performance indexes for Foundly Start:
 -- 1) `leads` enriched search ordering by `date_of_creation` (stored as YYYY-MM-DD text)
 -- 2) inbox summary/sidebar aggregation by `lead_id` and ordering by MAX(sent_at)
 

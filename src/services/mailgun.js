@@ -13,7 +13,7 @@ function getMailgunConfigFromProfile(profile) {
     const domain = (profile.mailgun_domain || process.env.MAILGUN_DOMAIN || '').trim();
     const region = (profile.mailgun_region || process.env.MAILGUN_REGION || 'us').trim().toLowerCase();
     const fromEmail = (profile.sender_email || process.env.MAILGUN_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || '').trim();
-    const fromName = (profile.sender_name || process.env.MAILGUN_SENDER_NAME || process.env.BREVO_SENDER_NAME || 'CHScanner').trim();
+    const fromName = (profile.sender_name || process.env.MAILGUN_SENDER_NAME || process.env.BREVO_SENDER_NAME || 'Foundly Start').trim();
     const replyTo = (profile.mailgun_reply_to || process.env.MAILGUN_REPLY_TO || '').trim();
 
     const baseUrl = region === 'eu'
@@ -99,7 +99,7 @@ async function sendMailgunEmail({
         }
     }
     if (variables && typeof variables === 'object') {
-        form.set('h:X-CHScanner-Metadata', JSON.stringify(variables));
+        form.set('h:X-Foundly-Start-Metadata', JSON.stringify(variables));
     }
     if (headers && typeof headers === 'object') {
         Object.entries(headers).forEach(([k, v]) => {

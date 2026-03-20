@@ -29,7 +29,7 @@ import type { List } from '../../hooks/useLists';
 
 export type LeadsViewMode = 'enriched' | 'discovery';
 
-const ACTIVE_LIST_STORAGE_KEY = 'chscanner_active_list_id';
+const ACTIVE_LIST_STORAGE_KEY = 'foundlystart_active_list_id';
 const IN_LISTS_SLICE_LIMIT = 250;
 
 function readStoredListId(): string {

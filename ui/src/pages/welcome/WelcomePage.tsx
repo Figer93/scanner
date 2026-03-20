@@ -71,7 +71,7 @@ export default function WelcomePage() {
                 <span className="block text-violet-200/90">done the right way.</span>
               </h2>
               <p className="text-sm text-white/50 leading-relaxed mt-4">
-                CHScanner finds newly incorporated UK businesses, enriches contacts, and helps you turn that data into
+                Foundly Start finds newly incorporated UK businesses, enriches contacts, and helps you turn that data into
                 ready-to-send outreach—while we support your setup so you’re not stuck.
               </p>
 
@@ -202,7 +202,7 @@ export default function WelcomePage() {
         {/* Footer */}
         <footer className="text-xs text-white/40 pb-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span>© {new Date().getFullYear()} Foundly Start · CHScanner</span>
+            <span>© {new Date().getFullYear()} Foundly Start</span>
             <span className="text-white/30">No cookies required. Premium by design.</span>
           </div>
         </footer>

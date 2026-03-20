@@ -62,7 +62,7 @@ const SEQUENCE_CONDITIONS = [
     { value: 'opened_not_replied', label: 'Opened but not replied' },
 ] as const;
 
-const INBOX_LAST_SEEN_KEY = 'chscanner_inbox_last_seen_v1';
+const INBOX_LAST_SEEN_KEY = 'foundlystart_inbox_last_seen_v1';
 
 function loadLastSeenMap(): Record<string, string> {
     try {

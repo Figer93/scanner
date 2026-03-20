@@ -99,7 +99,7 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
 
         const subj = (msg.subject || '').trim();
         if (!subj) {
-            setReplySubject('No subject (CHScanner)');
+            setReplySubject('No subject (Foundly Start)');
             return;
         }
         setReplySubject(subj.toLowerCase().startsWith('re:') ? subj : `Re: ${subj}`);
@@ -133,7 +133,7 @@ export default function LeadEmailConversation({ leadId, leadEmail, onSent }: Lea
         const lastWithSubject = [...thread].reverse().find((m) => (m.subject || '').trim());
         const base = (lastWithSubject?.subject || '').trim();
         if (!base) {
-            setReplySubject('No subject (CHScanner)');
+            setReplySubject('No subject (Foundly Start)');
             return;
         }
         setReplySubject(base.toLowerCase().startsWith('re:') ? base : `Re: ${base}`);

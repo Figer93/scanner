@@ -230,7 +230,7 @@ export default function SignatureTab() {
                             <label htmlFor="sig-full-name" className="block text-sm font-medium text-white/80 mb-1">
                                 Full name
                             </label>
-                            <input id="sig-full-name" {...register('full_name')} placeholder="Alex from CHScanner" className={INPUT_BASE} />
+                            <input id="sig-full-name" {...register('full_name')} placeholder="Alex from Foundly Start" className={INPUT_BASE} />
                         </div>
                         <div>
                             <label htmlFor="sig-job-title" className="block text-sm font-medium text-white/80 mb-1">
@@ -242,7 +242,7 @@ export default function SignatureTab() {
                             <label htmlFor="sig-company-name" className="block text-sm font-medium text-white/80 mb-1">
                                 Company name
                             </label>
-                            <input id="sig-company-name" {...register('company_name')} placeholder="CHScanner" className={INPUT_BASE} />
+                            <input id="sig-company-name" {...register('company_name')} placeholder="Foundly Start" className={INPUT_BASE} />
                         </div>
                     </div>
 
