@@ -62,6 +62,30 @@ export default function WelcomePage() {
             position: relative;
           }
 
+          .bgLayer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+          }
+
+          .bgLayerA {
+            z-index: 0;
+            background:
+              linear-gradient(120deg, rgba(255, 255, 255, 0.02) 0%, transparent 34%),
+              linear-gradient(300deg, rgba(255, 255, 255, 0.012) 0%, transparent 36%);
+            opacity: 0.7;
+          }
+
+          .bgLayerB {
+            z-index: 0;
+            mix-blend-mode: screen;
+            background:
+              radial-gradient(52% 38% at 16% 16%, rgba(200, 241, 53, 0.1), transparent 72%),
+              radial-gradient(36% 28% at 84% 76%, rgba(200, 241, 53, 0.08), transparent 78%),
+              radial-gradient(70% 45% at 50% 100%, rgba(255, 255, 255, 0.03), transparent 82%);
+            opacity: 0.85;
+          }
+
           .welcomePage::before {
             content: '';
             position: fixed;
@@ -82,6 +106,21 @@ export default function WelcomePage() {
               radial-gradient(70% 60% at 20% 12%, rgba(200, 241, 53, 0.09), transparent 70%),
               radial-gradient(45% 40% at 88% 78%, rgba(200, 241, 53, 0.05), transparent 72%),
               radial-gradient(60% 50% at 50% 100%, rgba(255, 255, 255, 0.025), transparent 78%);
+          }
+
+          @media (prefers-reduced-motion: no-preference) {
+            .bgLayerB {
+              animation: bgDrift 18s ease-in-out infinite alternate;
+            }
+          }
+
+          @keyframes bgDrift {
+            0% {
+              transform: translate3d(0, 0, 0) scale(1);
+            }
+            100% {
+              transform: translate3d(0, -1.5%, 0) scale(1.03);
+            }
           }
 
           .welcomeNav {
@@ -395,6 +434,8 @@ export default function WelcomePage() {
           }
         `}
       </style>
+      <div aria-hidden className="bgLayer bgLayerA" />
+      <div aria-hidden className="bgLayer bgLayerB" />
 
       <nav className="welcomeNav" aria-label="Primary">
         <p className="brand">FOUNDLY START</p>
