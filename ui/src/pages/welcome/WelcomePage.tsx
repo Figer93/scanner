@@ -1,212 +1,473 @@
-import { useCallback } from 'react';
-import { ArrowRight, ShieldCheck, Sparkles, Zap, Workflow, Users } from 'lucide-react';
+const DASHBOARD_URL = 'https://dashboard.foundlystart.co.uk';
+const EMAIL = 'hello@foundlystart.co.uk';
 
-import { GlassCard, Button } from '../../components/ui';
-import ContactForm from './ContactForm';
+const heroWords = ['We', 'grow', 'your', 'pipeline.'];
 
-const DASHBOARD_URL = 'https://dashboard.foundlystart.co.uk/#/';
+const services = [
+  {
+    number: '01',
+    name: 'LEAD DISCOVERY',
+    description: 'Newly incorporated UK businesses from Companies House, scored and filtered',
+  },
+  {
+    number: '02',
+    name: 'CONTACT ENRICHMENT',
+    description: 'Verified emails, phone numbers, decision-maker identification',
+  },
+  {
+    number: '03',
+    name: 'OUTREACH SETUP',
+    description: 'Personalised sequences, sender warmup, deliverability tuned',
+  },
+  {
+    number: '04',
+    name: 'GUIDED SUPPORT',
+    description: 'We work alongside you until the pipeline runs itself',
+  },
+];
 
-function ScrollToContactButton() {
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        const el = document.getElementById('welcome-contact');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }}
-      className="w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl bg-white/4 hover:bg-white/8 border border-white/10 hover:border-white/20 transition-[var(--transition-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-      aria-label="Get setup help"
-    >
-      <Users size={15} className="text-white/45" aria-hidden="true" />
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-white leading-tight">Get setup help</p>
-        <p className="text-xs text-white/40 leading-tight mt-0.5">We’ll guide your first outreach flow</p>
-      </div>
-      <ArrowRight size={16} className="text-violet-300 ml-auto" aria-hidden="true" />
-    </button>
-  );
-}
+const steps = [
+  {
+    number: '01',
+    title: 'DISCOVERY CALL',
+    description: 'We learn your target market, existing setup, and goals. No generic templates.',
+  },
+  {
+    number: '02',
+    title: 'BUILD & CONFIGURE',
+    description: 'We set up your lead pipeline, outreach sequences, and tracking - end to end.',
+  },
+  {
+    number: '03',
+    title: 'RUN & OPTIMISE',
+    description: 'You get results. We monitor, tune, and iterate with you every week.',
+  },
+];
 
 export default function WelcomePage() {
-  const goToDashboard = useCallback(() => {
-    window.location.href = DASHBOARD_URL;
-  }, []);
-
   return (
-    <div className="relative overflow-hidden">
-      {/* Ambient orbs */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-24 left-[7%] h-80 w-80 rounded-full bg-[var(--color-accent-glow)] blur-3xl opacity-20 motion-safe:animate-[orbFloat_10s_ease-in-out_infinite] duration-300" />
-        <div className="absolute top-[18%] right-[-8%] h-96 w-96 rounded-full bg-[var(--color-accent-secondary)] blur-3xl opacity-15 motion-safe:animate-[orbFloat_14s_ease-in-out_infinite] duration-300" />
-        <div className="absolute bottom-[-25%] left-[30%] h-[28rem] w-[28rem] rounded-full bg-[var(--color-accent-primary)] blur-3xl opacity-10 motion-safe:animate-[orbFloat_16s_ease-in-out_infinite] duration-300" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(124,58,237,0.12),transparent_55%)] motion-safe:animate-[shimmer_6s_ease-in-out_infinite]" />
-      </div>
+    <div className="welcomePage">
+      <style>
+        {`
+          .welcomePage {
+            --bg: #050505;
+            --text: rgba(255, 255, 255, 0.95);
+            --muted: rgba(255, 255, 255, 0.45);
+            --line: rgba(255, 255, 255, 0.08);
+            --softLine: rgba(255, 255, 255, 0.06);
+            --accent: #C8F135;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+            position: relative;
+          }
 
-      <main className="relative z-[1] max-w-screen-2xl mx-auto px-4 py-10">
-        <div className="flex flex-wrap items-center gap-3 justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-white/8 border border-white/10 shadow-glow flex items-center justify-center">
-              <Sparkles size={18} className="text-violet-200" aria-hidden="true" />
-            </div>
-            <div>
-              <p className="text-xs text-white/50 uppercase tracking-widest">Hyper-Glass Command Center</p>
-              <h1 className="text-2xl font-semibold text-white tracking-tight">Foundly Start</h1>
-            </div>
-          </div>
+          .welcomePage::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            opacity: 0.035;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+            z-index: 1;
+          }
 
-          <div className="flex flex-wrap items-center gap-3">
-            <Button variant="ghost" onClick={goToDashboard} aria-label="Go to dashboard">
-              Go to dashboard
-              <ArrowRight size={16} aria-hidden="true" />
-            </Button>
-          </div>
-        </div>
+          .welcomeNav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.5rem clamp(1.25rem, 4vw, 4rem);
+            background: transparent;
+          }
 
-        {/* Bento hero */}
-        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 mb-10">
-          <GlassCard className="p-6 md:col-span-2 xl:col-span-2">
-            <div className="relative">
-              <h2 className="text-3xl md:text-4xl font-semibold text-white tracking-tight leading-[1.05]">
-                B2B lead discovery + outreach,
-                <span className="block text-violet-200/90">done the right way.</span>
-              </h2>
-              <p className="text-sm text-white/50 leading-relaxed mt-4">
-                Foundly Start finds newly incorporated UK businesses, enriches contacts, and helps you turn that data into
-                ready-to-send outreach—while we support your setup so you’re not stuck.
-              </p>
+          .brand {
+            margin: 0;
+            color: #fff;
+            letter-spacing: 0.25em;
+            font-size: 0.75rem;
+            font-weight: 700;
+          }
 
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                  <div className="flex items-center gap-2 text-xs text-white/50 uppercase tracking-widest">
-                    <Zap size={14} aria-hidden="true" />
-                    Instant value
-                  </div>
-                  <p className="text-sm font-semibold text-white mt-2">Start in minutes</p>
-                  <p className="text-xs text-white/40 mt-1">Pipeline + templates + tracking</p>
-                </div>
-                <div className="rounded-2xl bg-white/5 border border-white/10 p-4">
-                  <div className="flex items-center gap-2 text-xs text-white/50 uppercase tracking-widest">
-                    <ShieldCheck size={14} aria-hidden="true" />
-                    Operational clarity
-                  </div>
-                  <p className="text-sm font-semibold text-white mt-2">Milestones that matter</p>
-                  <p className="text-xs text-white/40 mt-1">Sent, opened, replied, converted</p>
-                </div>
-              </div>
+          .dashboardLink {
+            color: rgba(255, 255, 255, 0.35);
+            text-decoration: none;
+            font-size: 0.8rem;
+            transition: color 150ms ease;
+          }
 
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    const el = document.getElementById('welcome-contact');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                  aria-label="Start conversation"
-                >
-                  Talk to us
-                  <ArrowRight size={16} aria-hidden="true" />
-                </Button>
-                <span className="text-xs text-white/40">
-                  No pressure—just setup guidance.
+          .dashboardLink:hover,
+          .dashboardLink:focus-visible {
+            color: var(--accent);
+            outline: none;
+          }
+
+          .welcomeMain {
+            position: relative;
+            z-index: 2;
+            padding: 0 clamp(1.25rem, 5vw, 6rem) 5rem;
+          }
+
+          .section {
+            padding: clamp(4rem, 10vw, 8rem) 0;
+          }
+
+          .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding-top: 6rem;
+          }
+
+          .heroHeading {
+            margin: 0;
+            max-width: 12ch;
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-weight: 700;
+            line-height: 0.96;
+            font-size: clamp(3.5rem, 8vw, 6.875rem);
+            letter-spacing: -0.01em;
+          }
+
+          .heroWord {
+            display: inline-block;
+            overflow: hidden;
+            margin-right: 0.18em;
+          }
+
+          .heroWord > span {
+            display: inline-block;
+            transform: translateY(40px);
+            opacity: 0;
+          }
+
+          @media (prefers-reduced-motion: no-preference) {
+            .heroWord > span {
+              animation: wordIn 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+            .heroWord:nth-child(1) > span { animation-delay: 0ms; }
+            .heroWord:nth-child(2) > span { animation-delay: 80ms; }
+            .heroWord:nth-child(3) > span { animation-delay: 160ms; }
+            .heroWord:nth-child(4) > span { animation-delay: 240ms; }
+          }
+
+          @keyframes wordIn {
+            from {
+              opacity: 0;
+              transform: translateY(40px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          .accent {
+            color: var(--accent);
+          }
+
+          .heroSubline {
+            margin: 2rem 0 3rem;
+            color: var(--muted);
+            font-size: clamp(0.75rem, 1.8vw, 0.9rem);
+            line-height: 1.6;
+          }
+
+          .heroRule {
+            margin: 0;
+            border: 0;
+            border-top: 1px solid var(--line);
+          }
+
+          .sectionMarker {
+            margin: 0 0 1rem;
+            color: var(--accent);
+            font-size: 0.7rem;
+            letter-spacing: 0.14em;
+          }
+
+          .sectionTitle {
+            margin: 0;
+            max-width: 700px;
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: clamp(2.1rem, 4.8vw, 3rem);
+            line-height: 1.13;
+            letter-spacing: -0.01em;
+          }
+
+          .servicesList {
+            margin-top: clamp(2.2rem, 6vw, 3.5rem);
+          }
+
+          .serviceItem {
+            border-bottom: 1px solid var(--softLine);
+            padding: 1.3rem 0;
+            display: grid;
+            grid-template-columns: minmax(3rem, 4.5rem) 1fr;
+            gap: 1.2rem;
+            transition: color 150ms ease;
+          }
+
+          .serviceNumber {
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 1.35rem;
+            line-height: 1;
+            transition: color 150ms ease;
+          }
+
+          .serviceItem:hover .serviceNumber {
+            color: var(--accent);
+          }
+
+          .serviceName {
+            margin: 0;
+            color: #fff;
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+          }
+
+          .serviceDescription {
+            margin: 0.55rem 0 0;
+            color: var(--muted);
+            font-size: 0.8rem;
+            line-height: 1.7;
+          }
+
+          .productLayout {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: clamp(2rem, 7vw, 6rem);
+            align-items: start;
+            margin-top: 2rem;
+          }
+
+          .quote {
+            margin: 0;
+            max-width: 18ch;
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: clamp(2rem, 4vw, 3.5rem);
+            line-height: 1.15;
+          }
+
+          .bodyCopy {
+            color: var(--muted);
+            font-size: 0.85rem;
+            line-height: 1.9;
+          }
+
+          .bodyCopy p {
+            margin: 0;
+          }
+
+          .bodyCopy p + p {
+            margin-top: 1.25rem;
+          }
+
+          .stepsTitle {
+            margin: 0 0 2.2rem;
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: clamp(1.9rem, 4.2vw, 2.5rem);
+          }
+
+          .stepsGrid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: clamp(1.25rem, 4vw, 3rem);
+          }
+
+          .stepCard {
+            position: relative;
+            border-top: 2px solid var(--line);
+            padding-top: 1.5rem;
+          }
+
+          .stepCardPrimary {
+            border-top-color: var(--accent);
+          }
+
+          .stepGhostNumber {
+            position: absolute;
+            top: 0.2rem;
+            left: 0;
+            font-size: 4rem;
+            line-height: 1;
+            color: var(--accent);
+            opacity: 0.15;
+            pointer-events: none;
+          }
+
+          .stepTitle {
+            margin: 1.8rem 0 0.65rem;
+            font-size: 0.9rem;
+            color: #fff;
+            letter-spacing: 0.15em;
+          }
+
+          .stepDescription {
+            margin: 0;
+            color: var(--muted);
+            font-size: 0.8rem;
+            line-height: 1.8;
+            max-width: 34ch;
+          }
+
+          .contactTitle {
+            margin: 0;
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+            font-size: clamp(3rem, 10vw, 4.5rem);
+            line-height: 1;
+          }
+
+          .contactSubline {
+            margin: 1rem 0 1.8rem;
+            color: var(--muted);
+            font-size: 0.82rem;
+          }
+
+          .emailLink {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: clamp(1rem, 2.2vw, 1.1rem);
+          }
+
+          .emailLink:hover,
+          .emailLink:focus-visible,
+          .contactAction:hover,
+          .contactAction:focus-visible {
+            text-decoration: underline;
+            text-underline-offset: 0.2rem;
+            outline: none;
+          }
+
+          .contactAction {
+            display: inline-block;
+            margin-top: 1rem;
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.85rem;
+          }
+
+          .copyright {
+            margin-top: 5rem;
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 0.68rem;
+          }
+
+          @media (max-width: 767px) {
+            .productLayout,
+            .stepsGrid {
+              grid-template-columns: 1fr;
+            }
+
+            .hero {
+              justify-content: center;
+              padding-top: 4.5rem;
+            }
+
+            .welcomeMain {
+              padding-left: 1.25rem;
+              padding-right: 1.25rem;
+            }
+          }
+        `}
+      </style>
+
+      <nav className="welcomeNav" aria-label="Primary">
+        <p className="brand">FOUNDLY START</p>
+        <a className="dashboardLink" href={DASHBOARD_URL}>
+          Go to dashboard →
+        </a>
+      </nav>
+
+      <main className="welcomeMain">
+        <section className="section hero" aria-label="Hero">
+          <h1 className="heroHeading">
+            {heroWords.map((word) => {
+              const isPipelineWord = word.toLowerCase() === 'pipeline.';
+              return (
+                <span key={word} className="heroWord">
+                  <span className={isPipelineWord ? 'accent' : undefined}>
+                    {word}
+                  </span>
                 </span>
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard className="p-6 xl:col-span-1">
-            <h3 className="text-xs font-semibold text-white/50 uppercase tracking-widest mb-4">How it works</h3>
-            <div className="space-y-3">
-              <div className="flex gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-semibold text-violet-200">1</span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Discover</p>
-                  <p className="text-xs text-white/40 leading-relaxed">Companies House + Google Maps signals</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-semibold text-violet-200">2</span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Enrich</p>
-                  <p className="text-xs text-white/40 leading-relaxed">Scrape contacts and detect email + phone</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                  <span className="text-sm font-semibold text-violet-200">3</span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Outreach</p>
-                  <p className="text-xs text-white/40 leading-relaxed">Score leads and generate outreach drafts</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <ScrollToContactButton />
-            </div>
-          </GlassCard>
-
-          <GlassCard className="p-6 xl:col-span-1">
-            <h3 className="text-xs font-semibold text-white/50 uppercase tracking-widest mb-4">B2B support model</h3>
-            <div className="space-y-3">
-              <div className="flex gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                  <Workflow size={16} className="text-violet-200" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">We help your setup</p>
-                  <p className="text-xs text-white/40 leading-relaxed">Refine templates, sender, tracking + routes</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                  <ShieldCheck size={16} className="text-violet-200" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">You stay in control</p>
-                  <p className="text-xs text-white/40 leading-relaxed">Milestones, limits, and visibility on every step</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                  <Users size={16} className="text-violet-200" aria-hidden="true" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Built for agencies</p>
-                  <p className="text-xs text-white/40 leading-relaxed">Operate at scale without losing consistency</p>
-                </div>
-              </div>
-            </div>
-          </GlassCard>
+              );
+            })}
+          </h1>
+          <p className="heroSubline">B2B lead generation + outreach - built and run with you.</p>
+          <hr className="heroRule" />
         </section>
 
-        {/* Contact */}
-        <section id="welcome-contact" className="mb-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-2xl bg-white/8 border border-white/10 shadow-glow flex items-center justify-center">
-              <Sparkles size={18} className="text-violet-200" aria-hidden="true" />
-            </div>
-            <div>
-              <p className="text-xs text-white/50 uppercase tracking-widest">Start here</p>
-              <h3 className="text-2xl font-semibold text-white tracking-tight">Support, setup, and next steps</h3>
-            </div>
+        <section className="section" aria-label="What we do">
+          <p className="sectionMarker">/ 01</p>
+          <h2 className="sectionTitle">We find the businesses that need you. Then we help you reach them.</h2>
+          <div className="servicesList">
+            {services.map((service) => (
+              <article className="serviceItem" key={service.number}>
+                <p className="serviceNumber">{service.number}</p>
+                <div>
+                  <h3 className="serviceName">{service.name}</h3>
+                  <p className="serviceDescription">{service.description}</p>
+                </div>
+              </article>
+            ))}
           </div>
-
-          <ContactForm />
         </section>
 
-        {/* Footer */}
-        <footer className="text-xs text-white/40 pb-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span>© {new Date().getFullYear()} Foundly Start</span>
-            <span className="text-white/30">No cookies required. Premium by design.</span>
+        <section className="section" aria-label="The product is us">
+          <p className="sectionMarker">/ 02</p>
+          <div className="productLayout">
+            <blockquote className="quote">"Most tools hand you a dashboard and disappear. We stay until it works."</blockquote>
+            <div className="bodyCopy">
+              <p>
+                Foundly Start is not software you subscribe to. It is a service built around your business - we configure
+                the systems, run the outreach flows, and tune them based on what converts for you.
+              </p>
+              <p>You keep full control and visibility. We bring the infrastructure and the expertise.</p>
+            </div>
           </div>
-        </footer>
+        </section>
+
+        <section className="section" aria-label="How it works">
+          <p className="sectionMarker">/ 03</p>
+          <h2 className="stepsTitle">Simple to start. Serious results.</h2>
+          <div className="stepsGrid">
+            {steps.map((step, index) => (
+              <article className={`stepCard ${index === 0 ? 'stepCardPrimary' : ''}`} key={step.number}>
+                <p className="stepGhostNumber" aria-hidden="true">
+                  {step.number}
+                </p>
+                <h3 className="stepTitle">{step.title}</h3>
+                <p className="stepDescription">{step.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
       </main>
+
+      <footer className="welcomeMain section" aria-label="Contact">
+        <p className="sectionMarker">/ 04</p>
+        <h2 className="contactTitle">Let&apos;s talk.</h2>
+        <p className="contactSubline">No forms. No decks. Just a conversation.</p>
+        <a className="emailLink" href={`mailto:${EMAIL}`}>
+          {EMAIL}
+        </a>
+        <br />
+        <a className="contactAction" href={`mailto:${EMAIL}`}>
+          → Send us a message
+        </a>
+        <p className="copyright">© 2025 Foundly Start</p>
+      </footer>
     </div>
   );
 }
