@@ -1,45 +1,45 @@
 const EMAIL = 'hello@foundlystart.co.uk';
 
-const heroWords = ['We', 'find', 'your', 'clients.'];
+const heroWords = ['We', 'help', 'new', 'businesses.'];
 
 const services = [
   {
     number: '01',
-    name: 'LEAD DISCOVERY',
-    description: 'We identify UK businesses that are most likely to need what you offer',
+    name: 'NEW BUSINESS FINDING',
+    description: 'We find newly started UK businesses and connect with owners who need practical support',
   },
   {
     number: '02',
-    name: 'TARGET QUALIFICATION',
-    description: 'We filter and prioritise the right decision-makers so your outreach is focused',
+    name: 'STARTUP SETUP HELP',
+    description: 'We help with the first setup steps so each business can launch with confidence',
   },
   {
     number: '03',
-    name: 'OUTREACH SETUP',
-    description: 'We set up your outreach systems, sequencing, and deliverability end to end',
+    name: 'BUSINESS ESSENTIALS',
+    description: 'Domain, basic accounting setup, bank setup guidance, and budget control support',
   },
   {
     number: '04',
     name: 'GUIDED SUPPORT',
-    description: 'We stay with you, improve results, and support your team until it runs smoothly',
+    description: 'We stay close and support each business until the foundations are stable',
   },
 ];
 
 const steps = [
   {
     number: '01',
-    title: 'DISCOVERY CALL',
-    description: 'We learn your target market, existing setup, and goals. No generic templates.',
+    title: 'UNDERSTAND THE BUSINESS',
+    description: 'We learn what the business is starting, where it is now, and what support is needed first.',
   },
   {
     number: '02',
-    title: 'BUILD & CONFIGURE',
-    description: 'We set up your lead pipeline, outreach sequences, and tracking - end to end.',
+    title: 'SET UP THE BASICS',
+    description: 'We help put the essentials in place: domain, accounting direction, bank setup, and budget control.',
   },
   {
     number: '03',
-    title: 'RUN & OPTIMISE',
-    description: 'You get results. We monitor, tune, and iterate with you every week.',
+    title: 'SUPPORT TO START STRONG',
+    description: 'We stay involved as the business starts trading so the setup works in real life.',
   },
 ];
 
@@ -70,6 +70,18 @@ export default function WelcomePage() {
             opacity: 0.035;
             background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
             z-index: 1;
+          }
+
+          .welcomePage::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background:
+              radial-gradient(70% 60% at 20% 12%, rgba(200, 241, 53, 0.09), transparent 70%),
+              radial-gradient(45% 40% at 88% 78%, rgba(200, 241, 53, 0.05), transparent 72%),
+              radial-gradient(60% 50% at 50% 100%, rgba(255, 255, 255, 0.025), transparent 78%);
           }
 
           .welcomeNav {
@@ -395,7 +407,7 @@ export default function WelcomePage() {
         <section className="section hero" aria-label="Hero">
           <h1 className="heroHeading">
             {heroWords.map((word) => {
-              const isPipelineWord = word.toLowerCase() === 'pipeline.';
+              const isPipelineWord = word.toLowerCase() === 'businesses.';
               return (
                 <span key={word} className="heroWord">
                   <span className={isPipelineWord ? 'accent' : undefined}>
@@ -405,13 +417,13 @@ export default function WelcomePage() {
               );
             })}
           </h1>
-          <p className="heroSubline">We find businesses that need you, then help you set up everything to reach them.</p>
+          <p className="heroSubline">We find new businesses and help them start with the right setup.</p>
           <hr className="heroRule" />
         </section>
 
         <section className="section" aria-label="What we do">
           <p className="sectionMarker">/ 01</p>
-          <h2 className="sectionTitle">We find the businesses that need your service, then set up the outreach with you.</h2>
+          <h2 className="sectionTitle">We find new businesses, then help them get everything in place to start properly.</h2>
           <div className="servicesList">
             {services.map((service) => (
               <article className="serviceItem" key={service.number}>
@@ -428,20 +440,20 @@ export default function WelcomePage() {
         <section className="section" aria-label="The product is us">
           <p className="sectionMarker">/ 02</p>
           <div className="productLayout">
-            <blockquote className="quote">"You do not need more software. You need the right businesses and a setup that works."</blockquote>
+            <blockquote className="quote">"No software pitch. Just real help for new businesses getting started."</blockquote>
             <div className="bodyCopy">
               <p>
-                Foundly Start is a done-with-you service. We research and qualify businesses that match your ideal client,
-                then build the practical outreach setup around your goals.
+                Foundly Start is a hands-on support service. We find new businesses and help owners set up the essentials
+                they need at the beginning.
               </p>
-              <p>We handle the setup details, guide your team, and keep improving performance until the process is stable.</p>
+              <p>That can include domain support, accounting guidance, bank setup help, and practical budget control.</p>
             </div>
           </div>
         </section>
 
         <section className="section" aria-label="How it works">
           <p className="sectionMarker">/ 03</p>
-          <h2 className="stepsTitle">Simple to start. Built around your business.</h2>
+          <h2 className="stepsTitle">Simple support for new businesses.</h2>
           <div className="stepsGrid">
             {steps.map((step, index) => (
               <article className={`stepCard ${index === 0 ? 'stepCardPrimary' : ''}`} key={step.number}>
