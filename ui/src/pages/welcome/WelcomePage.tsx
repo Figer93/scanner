@@ -1,28 +1,27 @@
-const DASHBOARD_URL = 'https://dashboard.foundlystart.co.uk';
 const EMAIL = 'hello@foundlystart.co.uk';
 
-const heroWords = ['We', 'grow', 'your', 'pipeline.'];
+const heroWords = ['We', 'find', 'your', 'clients.'];
 
 const services = [
   {
     number: '01',
     name: 'LEAD DISCOVERY',
-    description: 'Newly incorporated UK businesses from Companies House, scored and filtered',
+    description: 'We identify UK businesses that are most likely to need what you offer',
   },
   {
     number: '02',
-    name: 'CONTACT ENRICHMENT',
-    description: 'Verified emails, phone numbers, decision-maker identification',
+    name: 'TARGET QUALIFICATION',
+    description: 'We filter and prioritise the right decision-makers so your outreach is focused',
   },
   {
     number: '03',
     name: 'OUTREACH SETUP',
-    description: 'Personalised sequences, sender warmup, deliverability tuned',
+    description: 'We set up your outreach systems, sequencing, and deliverability end to end',
   },
   {
     number: '04',
     name: 'GUIDED SUPPORT',
-    description: 'We work alongside you until the pipeline runs itself',
+    description: 'We stay with you, improve results, and support your team until it runs smoothly',
   },
 ];
 
@@ -144,12 +143,14 @@ export default function WelcomePage() {
 
           .heroWord > span {
             display: inline-block;
-            transform: translateY(40px);
-            opacity: 0;
+            transform: translateY(0);
+            opacity: 1;
           }
 
           @media (prefers-reduced-motion: no-preference) {
             .heroWord > span {
+              transform: translateY(40px);
+              opacity: 0;
               animation: wordIn 700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
             }
             .heroWord:nth-child(1) > span { animation-delay: 0ms; }
@@ -385,8 +386,8 @@ export default function WelcomePage() {
 
       <nav className="welcomeNav" aria-label="Primary">
         <p className="brand">FOUNDLY START</p>
-        <a className="dashboardLink" href={DASHBOARD_URL}>
-          Go to dashboard →
+        <a className="dashboardLink" href={`mailto:${EMAIL}`}>
+          Contact us →
         </a>
       </nav>
 
@@ -404,13 +405,13 @@ export default function WelcomePage() {
               );
             })}
           </h1>
-          <p className="heroSubline">B2B lead generation + outreach - built and run with you.</p>
+          <p className="heroSubline">We find businesses that need you, then help you set up everything to reach them.</p>
           <hr className="heroRule" />
         </section>
 
         <section className="section" aria-label="What we do">
           <p className="sectionMarker">/ 01</p>
-          <h2 className="sectionTitle">We find the businesses that need you. Then we help you reach them.</h2>
+          <h2 className="sectionTitle">We find the businesses that need your service, then set up the outreach with you.</h2>
           <div className="servicesList">
             {services.map((service) => (
               <article className="serviceItem" key={service.number}>
@@ -427,20 +428,20 @@ export default function WelcomePage() {
         <section className="section" aria-label="The product is us">
           <p className="sectionMarker">/ 02</p>
           <div className="productLayout">
-            <blockquote className="quote">"Most tools hand you a dashboard and disappear. We stay until it works."</blockquote>
+            <blockquote className="quote">"You do not need more software. You need the right businesses and a setup that works."</blockquote>
             <div className="bodyCopy">
               <p>
-                Foundly Start is not software you subscribe to. It is a service built around your business - we configure
-                the systems, run the outreach flows, and tune them based on what converts for you.
+                Foundly Start is a done-with-you service. We research and qualify businesses that match your ideal client,
+                then build the practical outreach setup around your goals.
               </p>
-              <p>You keep full control and visibility. We bring the infrastructure and the expertise.</p>
+              <p>We handle the setup details, guide your team, and keep improving performance until the process is stable.</p>
             </div>
           </div>
         </section>
 
         <section className="section" aria-label="How it works">
           <p className="sectionMarker">/ 03</p>
-          <h2 className="stepsTitle">Simple to start. Serious results.</h2>
+          <h2 className="stepsTitle">Simple to start. Built around your business.</h2>
           <div className="stepsGrid">
             {steps.map((step, index) => (
               <article className={`stepCard ${index === 0 ? 'stepCardPrimary' : ''}`} key={step.number}>
