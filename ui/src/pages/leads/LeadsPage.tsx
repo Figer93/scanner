@@ -183,8 +183,8 @@ export default function LeadsPage() {
     }, [activeListId, selectedIds, saveCompanies]);
 
     const handleContinue = useCallback(() => {
-        window.location.hash = activeListId ? `#/kanban?listId=${activeListId}` : '#/kanban';
-    }, [activeListId]);
+        window.location.hash = '#/leads';
+    }, []);
 
     const handleCompanyClick = useCallback((company: CHCompany) => {
         const num = company?.number || company?.company_number;

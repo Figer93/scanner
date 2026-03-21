@@ -3,8 +3,36 @@
  * Renders as a bento grid of GlassCards.
  */
 
+import { useMemo } from 'react';
 import { GlassCard } from '../../components/ui';
 import { capitalize, formatDate } from '../../lib/utils';
+
+const HONORIFIC_PREFIX = /^(mr|mrs|ms|miss|dr|prof|sir|dame|lord|lady)\.?\s+/i;
+
+/** Tokens for loose name matching (CH officer vs PSC wording). */
+function nameTokenSet(raw: string | undefined): Set<string> {
+    if (!raw) return new Set();
+    let s = raw.toUpperCase().replace(HONORIFIC_PREFIX, '');
+    s = s.replace(/,/g, ' ').replace(/[^A-Z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    return new Set(s.split(' ').filter((t) => t.length > 1));
+}
+
+function pscDuplicatesOfficer(
+    pscName: string | undefined,
+    officerList: Array<{ name?: string }>,
+): boolean {
+    const pTokens = nameTokenSet(pscName);
+    if (pTokens.size < 2) return false;
+    return officerList.some((o) => {
+        const oTokens = nameTokenSet(o.name);
+        if (oTokens.size < 2) return false;
+        let overlap = 0;
+        for (const t of pTokens) {
+            if (oTokens.has(t)) overlap++;
+        }
+        return overlap >= 2;
+    });
+}
 
 interface SectionCardProps {
     title: string;
@@ -67,6 +95,11 @@ export default function CompanyOfficers({
         || undeliverableAddress || officeInDispute || canFile != null;
     const hasSic = Array.isArray(sicCodes) && sicCodes.length > 0;
 
+    const pscsFiltered = useMemo(
+        () => pscs.filter((p) => !pscDuplicatesOfficer(p.name, officers)),
+        [pscs, officers],
+    );
+
     return (
         <>
             {hasSic && (
@@ -90,9 +123,9 @@ export default function CompanyOfficers({
             </SectionCard>
 
             <SectionCard title="PSCs" className="xl:col-span-1" compact>
-                {pscs.length > 0 ? (
+                {pscsFiltered.length > 0 ? (
                     <ul className="space-y-0.5">
-                        {pscs.map((p, i) => (
+                        {pscsFiltered.map((p, i) => (
                             <li key={i} className="text-sm text-[var(--color-text-primary)]" title={`${p.name || '—'}${p.nature_of_control ? ` — ${p.nature_of_control}` : ''}`}>
                                 <span className="font-medium truncate block">{p.name || '—'}</span>
                                 {p.nature_of_control && <span className="text-xs text-[var(--color-text-muted)] block truncate">{String(p.nature_of_control).replace(/-/g, ' ')}</span>}

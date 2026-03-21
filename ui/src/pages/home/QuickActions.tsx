@@ -21,21 +21,21 @@ interface ActionDef {
 
 const STATIC_ACTIONS: readonly ActionDef[] = [
     {
-        id: 'kanban',
-        label: 'Open pipeline board',
-        description: 'Manage leads across all pipeline stages',
+        id: 'leads',
+        label: 'Open Find Leads',
+        description: 'Browse enriched leads and discovery',
         icon: Kanban,
     },
     {
         id: 'outreach',
         label: 'Email enriched leads',
-        description: 'Go to Kanban · Ready to Send view',
+        description: 'Open Outreach · conversations and queue',
         icon: Users,
     },
     {
-        id: 'analytics',
-        label: 'View analytics',
-        description: 'List performance, funnel and conversion rates',
+        id: 'home',
+        label: 'View dashboard',
+        description: 'Pipeline summary and activity on the home page',
         icon: BarChart2,
     },
 ] as const;
@@ -45,9 +45,9 @@ function navigate(hash: string) {
 }
 
 function handleStaticAction(id: string) {
-    if (id === 'kanban') navigate('#/kanban');
-    else if (id === 'outreach') navigate('#/kanban');
-    else if (id === 'analytics') navigate('#/analytics');
+    if (id === 'leads') navigate('#/leads');
+    else if (id === 'outreach') navigate('#/outreach');
+    else if (id === 'home') navigate('#/');
 }
 
 export default function QuickActions() {

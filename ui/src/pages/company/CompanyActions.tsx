@@ -10,7 +10,7 @@ import api from '../../api/client';
 import { GlassCard, Button, Input, Select } from '../../components/ui';
 import Modal from '../../components/ui/Modal';
 import StatusDropdown from '../../components/StatusDropdown';
-import { capitalize, formatDate } from '../../lib/utils';
+import { capitalize } from '../../lib/utils';
 import { useLists } from '../../hooks/useLists';
 import { useUpdateLead, useScoreLead } from '../../hooks/useLeads';
 import type { Lead } from '../../hooks/useLeads';
@@ -23,18 +23,19 @@ function parseList(value: string): string[] {
         .filter(Boolean);
 }
 
+/** Normalize host/path for comparing website vs domain (header vs lead row). */
+function normalizeWebsiteKey(raw: string | undefined): string {
+    if (!raw) return '';
+    let s = String(raw).trim().toLowerCase();
+    s = s.replace(/^https?:\/\//, '').replace(/\/$/, '').split('/')[0] ?? '';
+    return s;
+}
+
 interface CompanyActionsProps {
     lead: Lead | null;
     companyNumber: string;
     company: Record<string, unknown>;
-    statusBadgeCls: string;
-    status: string;
-    type: string;
-    jurisdiction: string;
-    incorpDate: string;
-    address: string;
     domainUrl: string | undefined;
-    numDisplay: string;
     onLeadRefresh: () => void;
     onCompanyRefresh: () => void;
 }
@@ -42,8 +43,7 @@ interface CompanyActionsProps {
 const linkCls = 'text-[var(--color-accent-secondary)] hover:opacity-90 underline text-sm break-all text-right focus-visible:ring-2 focus-visible:ring-[var(--color-accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded';
 
 export default function CompanyActions({
-    lead, companyNumber, company, statusBadgeCls, status, type,
-    jurisdiction, incorpDate, address, domainUrl, numDisplay,
+    lead, companyNumber, company, domainUrl,
     onLeadRefresh, onCompanyRefresh,
 }: CompanyActionsProps) {
     const [enriching, setEnriching] = useState(false);
@@ -161,6 +161,12 @@ export default function CompanyActions({
         }
     }, [lead?.id, contactEmails, contactPhones, updateLeadMutation, onLeadRefresh]);
 
+    const leadWebsite = lead?.website ? String(lead.website) : '';
+    const domainStr = domainUrl ? String(domainUrl) : '';
+    const websiteRowDifferent =
+        Boolean(lead) &&
+        (normalizeWebsiteKey(leadWebsite) !== normalizeWebsiteKey(domainStr) || (!domainStr && leadWebsite));
+
     return (
         <>
             {/* Action bar — full width in bento grid */}
@@ -230,13 +236,24 @@ export default function CompanyActions({
                         <Building2 size={16} className="text-[var(--color-text-muted)]" aria-hidden="true" />Company
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 leading-relaxed">
-                        <div className="flex justify-between items-baseline gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Company number</span><span className="text-sm font-mono text-[var(--color-text-primary)] text-right truncate">{numDisplay}</span></div>
-                        <div className="flex justify-between items-center gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Status</span><span className={`inline-flex px-2 py-0.5 rounded-[var(--radius-inner)] text-xs font-medium border shrink-0 ${statusBadgeCls}`}>{capitalize(status) || '—'}</span></div>
-                        <div className="flex justify-between items-baseline gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Type</span><span className="text-sm text-[var(--color-text-primary)] text-right truncate">{type ? capitalize(type.replace(/-/g, ' ')) : '—'}</span></div>
-                        {jurisdiction && <div className="flex justify-between items-baseline gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Jurisdiction</span><span className="text-sm text-[var(--color-text-primary)] text-right truncate">{capitalize(jurisdiction.replace(/-/g, ' '))}</span></div>}
-                        <div className="flex justify-between items-baseline gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Incorporation date</span><span className="text-sm text-[var(--color-text-primary)] text-right">{formatDate(incorpDate)}</span></div>
-                        <div className="flex justify-between items-baseline gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Website</span>{(lead?.website || domainUrl) ? <a href={(lead?.website || domainUrl || '').startsWith('http') ? (lead?.website || domainUrl) : `https://${lead?.website || domainUrl}`} target="_blank" rel="noopener noreferrer" className={`${linkCls} truncate block text-right`}>{lead?.website || domainUrl}</a> : <span className="text-sm text-[var(--color-text-muted)] text-right">—</span>}</div>
                         <div className="flex justify-between items-baseline gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Source</span><span className="text-sm text-[var(--color-text-primary)] text-right truncate">{lead?.source || (company.source_metadata ? 'companies_house' : '—')}</span></div>
+                        {websiteRowDifferent && (
+                            <div className="flex justify-between items-baseline gap-2 min-w-0 sm:col-span-2">
+                                <span className="text-xs text-[var(--color-text-secondary)] shrink-0">Website (lead)</span>
+                                {(leadWebsite || domainStr) ? (
+                                    <a
+                                        href={(leadWebsite || domainStr).startsWith('http') ? (leadWebsite || domainStr) : `https://${leadWebsite || domainStr}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`${linkCls} truncate block text-right`}
+                                    >
+                                        {leadWebsite || domainStr}
+                                    </a>
+                                ) : (
+                                    <span className="text-sm text-[var(--color-text-muted)] text-right">—</span>
+                                )}
+                            </div>
+                        )}
                         {lead && (
                             <div className="flex justify-between items-center gap-2 min-w-0 sm:col-span-2">
                                 <span className="text-xs text-[var(--color-text-secondary)] shrink-0">Lead status</span>
@@ -290,7 +307,6 @@ export default function CompanyActions({
                                 )}
                             </div>
                         )}
-                        <div className="flex justify-between items-baseline gap-2 min-w-0 sm:col-span-2"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Registered office</span><span className="text-sm text-[var(--color-text-primary)] text-right min-w-0 max-w-[70%] truncate" title={address}>{address}</span></div>
                     </div>
                 </GlassCard>
             </div>
@@ -316,7 +332,6 @@ export default function CompanyActions({
                         <div className="space-y-1.5 leading-relaxed text-sm flex-1">
                             <div className="flex justify-between gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">LinkedIn</span>{lead.linkedin_url ? <a href={lead.linkedin_url} target="_blank" rel="noopener noreferrer" className={`${linkCls} truncate block text-right`}>Link</a> : <span className="text-[var(--color-text-muted)] text-right">Not found</span>}</div>
                             <div className="flex justify-between gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Predicted email</span><span className="font-mono text-[var(--color-text-primary)] text-right truncate" title={lead.predicted_email || ''}>{lead.predicted_email || 'Not found'}</span></div>
-                            <div className="flex justify-between gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Phone(s)</span><span className="text-[var(--color-text-primary)] text-right truncate">{lead.phones?.length ? lead.phones.join(', ') : 'Not found'}</span></div>
                             {lead.enrichment_status && <div className="flex justify-between gap-2 min-w-0"><span className="text-xs text-[var(--color-text-secondary)] shrink-0">Status</span><span className="text-[var(--color-text-primary)] text-right">{lead.enrichment_status}</span></div>}
                         </div>
                     </GlassCard>

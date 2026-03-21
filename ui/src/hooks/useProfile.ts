@@ -12,28 +12,15 @@ export interface ProfileData {
     serper_api_key_source: string;
     companies_house_api_key: string;
     companies_house_api_key_source: string;
-    google_places_api_key: string;
-    google_places_api_key_source: string;
     google_ai_api_key: string;
     google_ai_api_key_source: string;
-    apify_api_token: string;
-    apify_api_token_source: string;
-    hubspot_api_key: string;
-    hubspot_api_key_source: string;
-    pipedrive_api_token: string;
-    pipedrive_api_token_source: string;
-    pipedrive_domain: string;
-    pipedrive_domain_source: string;
-    salesforce_access_token: string;
-    salesforce_access_token_source: string;
-    salesforce_instance_url: string;
-    salesforce_instance_url_source: string;
     webhook_url: string;
     webhook_score_threshold: string;
     team_members: string;
     team_members_source: string;
     lead_scoring_criteria: string;
     last_pipeline_run?: string;
+    /** Estimated earnings on dashboard; edited in Profile → Estimated earnings. */
     earnings_referral_pounds?: number | null;
     earnings_conversion_rate_pct?: number;
 }

@@ -5,10 +5,7 @@ import LeadsPage from './pages/leads/LeadsPage';
 import LeadProfilePage from './pages/LeadProfilePage';
 import CompanyDetailPage from './pages/company/CompanyDetailPage';
 import ProfilePage from './pages/profile/ProfilePage';
-import Logs from './pages/Logs';
-import Analytics from './pages/Analytics';
 import DBManagement from './pages/DBManagement';
-import Earnings from './pages/Earnings';
 import AppLayout from './components/layout/AppLayout';
 import { api } from './api/client';
 import { endpoints } from './api/endpoints';
@@ -38,7 +35,6 @@ function parseTs(ts) {
   return Number.isFinite(t) ? t : null;
 }
 
-const KanbanPage = lazy(() => import('./pages/kanban/KanbanPage'));
 const Outreach = lazy(() => import('./pages/Outreach'));
 
 const queryClient = new QueryClient({
@@ -153,13 +149,9 @@ function AppInner() {
 
   const activeNavId =
     isFindLeads ? 'leads'
-    : page === 'kanban' ? 'kanban'
     : page === 'profile' ? 'profile'
-    : page === 'analytics' ? 'analytics'
-    : page === 'earnings' ? 'earnings'
     : page === 'outreach' ? 'outreach'
     : page === 'db' ? 'db'
-    : page === 'logs' ? 'logs'
     : 'home';
 
   return (
@@ -175,21 +167,13 @@ function AppInner() {
       {isFindLeads && <LeadsPage />}
       {isLeadProfile && <LeadProfilePage leadId={leadId} onBack={handleBackToLeads} />}
       {isCompanyDetail && <CompanyDetailPage companyNumber={companyNumber} onBack={handleBackToLeads} />}
-      {page === 'kanban' && (
-        <Suspense fallback={<div className="p-6 text-white/70">Loading…</div>}>
-          <KanbanPage />
-        </Suspense>
-      )}
       {page === 'profile' && <ProfilePage logs={logs} onClearLogs={handleClearLogs} />}
-      {page === 'analytics' && <Analytics />}
-      {page === 'earnings' && <Earnings />}
       {page === 'outreach' && (
         <Suspense fallback={<div className="p-6 text-white/70">Loading…</div>}>
           <Outreach initialConversationLeadId={conversationLeadId} />
         </Suspense>
       )}
       {page === 'db' && <DBManagement />}
-      {page === 'logs' && <Logs logs={logs} onClearLogs={handleClearLogs} />}
     </AppLayout>
   );
 }

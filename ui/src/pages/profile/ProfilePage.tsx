@@ -11,6 +11,7 @@ import { useProfile } from '../../hooks/useProfile';
 import { SkeletonGrid } from '../../components/ui/SkeletonCard';
 import { Button } from '../../components/ui';
 import ApiKeysSection from './ApiKeysSection';
+import EarningsSection from './EarningsSection';
 import BrevoWebhookSection from './BrevoWebhookSection';
 import MailgunWebhookSection from './MailgunWebhookSection';
 import OutreachSection from './OutreachSection';
@@ -107,6 +108,7 @@ export default function ProfilePage({ logs = [], onClearLogs }: ProfilePageProps
             )}
 
             <ApiKeysSection profile={profile} onMessage={handleMessage} />
+            <EarningsSection onMessage={handleMessage} />
             <MailgunWebhookSection />
             <OutreachSection profile={profile} onMessage={handleMessage} />
             <SettingsSection profile={profile} onMessage={handleMessage} />

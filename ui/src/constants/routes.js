@@ -5,12 +5,8 @@
 export const ROUTES = {
     HOME: '#/',
     LEADS: '#/leads',
-    KANBAN: '#/kanban',
-    ANALYTICS: '#/analytics',
-    EARNINGS: '#/earnings',
     OUTREACH: '#/outreach',
     DB: '#/db',
-    LOGS: '#/logs',
     PROFILE: '#/profile',
 };
 
@@ -31,19 +27,20 @@ export function getPageFromHash(hash) {
     if (leadMatch) return { page: 'leads', leadId: parseInt(leadMatch[1], 10), companyNumber: null, conversationLeadId: null };
     const companyMatch = h.match(/#\/company\/([^/#?]+)/);
     if (companyMatch) return { page: 'company', leadId: null, companyNumber: decodeURIComponent(companyMatch[1]), conversationLeadId: null };
-    if (h === '#/leads') return { page: 'leads', leadId: null, companyNumber: null, conversationLeadId: null };
+    if (/^#\/leads([?#]|$)/.test(h)) return { page: 'leads', leadId: null, companyNumber: null, conversationLeadId: null };
     if (h === '#/' || h === '#') return { page: 'home', leadId: null, companyNumber: null, conversationLeadId: null };
-    if (h.includes('profile')) return { page: 'profile', leadId: null, companyNumber: null, conversationLeadId: null };
-    if (h.includes('kanban')) return { page: 'kanban', leadId: null, companyNumber: null, conversationLeadId: null };
-    if (h.includes('analytics')) return { page: 'analytics', leadId: null, companyNumber: null, conversationLeadId: null };
-    if (h.includes('earnings')) return { page: 'earnings', leadId: null, companyNumber: null, conversationLeadId: null };
-    if (h.includes('outreach')) {
+    if (h.startsWith('#/outreach')) {
         const params = parseQueryParams(h);
         const conversationLeadId = params.conversation ? String(params.conversation).trim() : null;
         return { page: 'outreach', leadId: null, companyNumber: null, conversationLeadId };
     }
-    if (h.includes('db')) return { page: 'db', leadId: null, companyNumber: null, conversationLeadId: null };
-    if (h.includes('logs')) return { page: 'logs', leadId: null, companyNumber: null, conversationLeadId: null };
+    if (h.startsWith('#/db')) return { page: 'db', leadId: null, companyNumber: null, conversationLeadId: null };
+    if (h.startsWith('#/profile')) return { page: 'profile', leadId: null, companyNumber: null, conversationLeadId: null };
+    // Legacy bookmarks (removed nav items)
+    if (h.includes('kanban')) return { page: 'leads', leadId: null, companyNumber: null, conversationLeadId: null };
+    if (h.includes('analytics')) return { page: 'home', leadId: null, companyNumber: null, conversationLeadId: null };
+    if (h.includes('earnings')) return { page: 'profile', leadId: null, companyNumber: null, conversationLeadId: null };
+    if (h.includes('logs')) return { page: 'profile', leadId: null, companyNumber: null, conversationLeadId: null };
     return { page: 'home', leadId: null, companyNumber: null, conversationLeadId: null };
 }
 

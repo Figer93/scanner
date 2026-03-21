@@ -23,14 +23,6 @@ const API_KEYS: ApiKeysDef[] = [
     { key: 'companies_house_api_key', label: 'Companies House API key', description: 'Required for Find Leads: syncs CH cache, fetches company and officer data.' },
     { key: 'google_ai_api_key', label: 'Google AI (Gemini) API key', description: 'Used for lead scoring, outreach draft generation, and AI enrichment.' },
     { key: 'serper_api_key', label: 'Serper API key', description: 'Used to find company websites via search when enriching leads.' },
-    { key: 'google_places_api_key', label: 'Google Places API key', description: 'Used when pipeline source is Google Maps to discover businesses.' },
-    { key: 'apify_api_token', label: 'Apify API token', description: 'Used for LinkedIn company scraping when enriching leads.' },
-    { key: 'apify_linkedin_actor_id', label: 'Apify LinkedIn actor ID', description: 'Optional. Apify actor for LinkedIn. Leave blank for default.' },
-    { key: 'hubspot_api_key', label: 'HubSpot API key', description: 'Private app token for pushing leads to HubSpot.' },
-    { key: 'pipedrive_api_token', label: 'Pipedrive API token', description: 'Used to push leads to Pipedrive.' },
-    { key: 'pipedrive_domain', label: 'Pipedrive domain', description: 'Your Pipedrive subdomain (e.g. mycompany).' },
-    { key: 'salesforce_access_token', label: 'Salesforce access token', description: 'OAuth or session token for pushing leads to Salesforce.' },
-    { key: 'salesforce_instance_url', label: 'Salesforce instance URL', description: 'Your Salesforce instance (e.g. https://myorg.my.salesforce.com).' },
 ];
 
 interface ApiKeysSectionProps {

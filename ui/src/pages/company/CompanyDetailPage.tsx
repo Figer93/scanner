@@ -121,14 +121,7 @@ export default function CompanyDetailPage({ companyNumber }: CompanyDetailPagePr
                     lead={lead}
                     companyNumber={companyNumber}
                     company={profile}
-                    statusBadgeCls={statusBadgeCls}
-                    status={status}
-                    type={type}
-                    jurisdiction={jurisdiction}
-                    incorpDate={incorpDate}
-                    address={address}
                     domainUrl={domainUrl}
-                    numDisplay={numDisplay}
                     onLeadRefresh={handleLeadRefresh}
                     onCompanyRefresh={handleCompanyRefresh}
                 />

@@ -1,6 +1,6 @@
 /**
  * PipelineSummary — six clickable stat cards + Est. earnings (Phase 3A).
- * Each card links to the Kanban board or Earnings page.
+ * Stat cards link to Find Leads; earnings card links to Profile settings.
  */
 
 import type { LucideIcon } from 'lucide-react';
@@ -23,11 +23,11 @@ interface StatConfig {
 
 const STATS: readonly StatConfig[] = [
     { key: 'total',      label: 'Total',      icon: Database,      iconClass: 'text-white/50',    href: '#/leads',                           glowRgb: '255,255,255',   hoverBorderClass: 'group-hover:border-white/25' },
-    { key: 'Enriched',   label: 'Enriched',   icon: Sparkles,      iconClass: 'text-indigo-400',  href: '#/kanban?status=Enriched',           glowRgb: '129,140,248',   hoverBorderClass: 'group-hover:border-indigo-400/60' },
-    { key: 'Email Sent', label: 'Email Sent', icon: Send,          iconClass: 'text-sky-400',     href: '#/kanban?status=Email+Sent',         glowRgb: '56,189,248',    hoverBorderClass: 'group-hover:border-sky-400/60' },
-    { key: 'Opened',     label: 'Opened',     icon: MailOpen,      iconClass: 'text-amber-400',   href: '#/kanban?status=Opened',             glowRgb: '251,191,36',    hoverBorderClass: 'group-hover:border-amber-400/60' },
-    { key: 'Replied',    label: 'Replied',    icon: MessageSquare, iconClass: 'text-emerald-400', href: '#/kanban?status=Replied',            glowRgb: '52,211,153',    hoverBorderClass: 'group-hover:border-emerald-400/60' },
-    { key: 'Converted',  label: 'Converted',  icon: TrendingUp,    iconClass: 'text-violet-400',  href: '#/kanban?status=Converted',          glowRgb: '167,139,250',   hoverBorderClass: 'group-hover:border-violet-400/60' },
+    { key: 'Enriched',   label: 'Enriched',   icon: Sparkles,      iconClass: 'text-indigo-400',  href: '#/leads', glowRgb: '129,140,248',   hoverBorderClass: 'group-hover:border-indigo-400/60' },
+    { key: 'Email Sent', label: 'Email Sent', icon: Send,          iconClass: 'text-sky-400',     href: '#/leads', glowRgb: '56,189,248',    hoverBorderClass: 'group-hover:border-sky-400/60' },
+    { key: 'Opened',     label: 'Opened',     icon: MailOpen,      iconClass: 'text-amber-400',   href: '#/leads', glowRgb: '251,191,36',    hoverBorderClass: 'group-hover:border-amber-400/60' },
+    { key: 'Replied',    label: 'Replied',    icon: MessageSquare, iconClass: 'text-emerald-400', href: '#/leads', glowRgb: '52,211,153',    hoverBorderClass: 'group-hover:border-emerald-400/60' },
+    { key: 'Converted',  label: 'Converted',  icon: TrendingUp,    iconClass: 'text-violet-400',  href: '#/leads', glowRgb: '167,139,250',   hoverBorderClass: 'group-hover:border-violet-400/60' },
 ] as const;
 
 interface StatCardProps {
@@ -86,7 +86,7 @@ export default function PipelineSummary() {
     const estimatedEarnings = earnings?.overview?.estimatedEarnings ?? null;
     const earningsConfigured = earnings?.overview?.referralPounds != null && !Number.isNaN(earnings.overview.referralPounds);
     const earningsDisplay = estimatedEarnings != null ? `£${estimatedEarnings.toFixed(2)}` : '£0';
-    const earningsTitle = earningsConfigured ? undefined : 'Configure in Earnings page';
+    const earningsTitle = earningsConfigured ? undefined : 'Configure in Profile';
 
     return (
         <section aria-label="Pipeline summary">
@@ -100,7 +100,7 @@ export default function PipelineSummary() {
                     />
                 ))}
                 <a
-                    href="#/earnings"
+                    href="#/profile#profile-earnings-settings"
                     title={earningsTitle}
                     aria-label={earningsTitle ? `Est. earnings this month: ${earningsDisplay} — ${earningsTitle}` : `Est. earnings this month: ${earningsDisplay} — click to view`}
                     className="group relative block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"

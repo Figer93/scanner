@@ -4,12 +4,8 @@
 const NAV_ITEMS = [
   { id: 'home', hash: '#/', label: 'Dashboard', icon: '◉' },
   { id: 'leads', hash: '#/leads', label: 'Find Leads', icon: '🔍', ariaDescription: 'Enriched leads and discovery' },
-  { id: 'kanban', hash: '#/kanban', label: 'Kanban', icon: '📋' },
-  { id: 'analytics', hash: '#/analytics', label: 'Analytics', icon: '📊' },
-  { id: 'earnings', hash: '#/earnings', label: 'Earnings', icon: '£' },
   { id: 'outreach', hash: '#/outreach', label: 'Outreach', icon: '✉' },
   { id: 'db', hash: '#/db', label: 'DB Management', icon: '🗄' },
-  { id: 'logs', hash: '#/logs', label: 'Logs', icon: '📜' },
   { id: 'profile', hash: '#/profile', label: 'Profile', icon: '⚙' },
 ];
 
