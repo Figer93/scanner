@@ -30,8 +30,8 @@ async function main() {
     const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'leads.db');
     const db = await getDb(dbPath);
     initSchema(db);
-    const apiKeys = getResolvedKeys(db);
-    const apiKey = apiKeys.companies_house_api_key || process.env.COMPANIES_HOUSE_API_KEY || '';
+    const apiKeys = await getResolvedKeys(db);
+    const apiKey = apiKeys.companies_house_api_key || '';
 
     if (!apiKey || !apiKey.trim()) {
         console.error('Companies House API key is required. Set COMPANIES_HOUSE_API_KEY in .env or in Profile (via UI).');

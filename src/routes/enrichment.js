@@ -13,6 +13,7 @@ const {
     setDeepEnrichmentRunning,
     isDeepEnrichmentRunning,
 } = require('../serverContext');
+const { resolveCompaniesHouseApiKey } = require('../services/companiesHouse');
 const { runChBulkImport } = require('../pipeline/chBulkImport');
 const { runWorkerPool } = require('../pipeline/workerPool');
 const { ensureEnrichmentSchema } = require('../db/enrichmentBootstrap');
@@ -129,9 +130,11 @@ function mountEnrichment(app, context = {}) {
             const db = db0;
             initSchema(db);
             const profile = await getProfile(db);
-            const chKey = (profile.companies_house_api_key || process.env.COMPANIES_HOUSE_API_KEY || '').trim();
+            const chKey = resolveCompaniesHouseApiKey(profile);
             if (!chKey) {
-                return res.status(400).json({ error: 'Companies House API key required (profile or COMPANIES_HOUSE_API_KEY)' });
+                return res.status(400).json({
+                    error: 'Companies House API key required. Set COMPANIES_HOUSE_API_KEY or Profile companies_house_api_key (env wins when set).',
+                });
             }
 
             const { filters: rawFilters, concurrency } = req.body || {};

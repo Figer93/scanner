@@ -9,6 +9,28 @@ const CH_BASE = 'https://api.company-information.service.gov.uk';
 const DEFAULT_DAYS_BACK = parseInt(process.env.CH_DAYS_BACK, 10) || 30;
 
 /**
+ * Prefer COMPANIES_HOUSE_API_KEY (Railway / .env) over Profile so a stale DB key does not override deployment.
+ * @param {Record<string, string> | null | undefined} profile
+ * @returns {string}
+ */
+function resolveCompaniesHouseApiKey(profile) {
+    const strip = (s) => {
+        if (s == null || s === '') return '';
+        let x = String(s).trim();
+        if ((x.startsWith('"') && x.endsWith('"')) || (x.startsWith("'") && x.endsWith("'"))) {
+            x = x.slice(1, -1).trim();
+        }
+        return x;
+    };
+    const fromEnv = strip(process.env.COMPANIES_HOUSE_API_KEY);
+    const fromProf =
+        profile && typeof profile === 'object' && profile.companies_house_api_key != null
+            ? strip(profile.companies_house_api_key)
+            : '';
+    return fromEnv || fromProf;
+}
+
+/**
  * Format date as YYYY-MM-DD.
  * @param {Date} d
  * @returns {string}
@@ -31,7 +53,7 @@ function toDateString(d) {
  * @returns {Promise<Array<{ name: string, number: string, address: string, postcode: string }>>}
  */
 async function fetchCompanies(options = {}) {
-    const apiKey = options.apiKey || process.env.COMPANIES_HOUSE_API_KEY;
+    const apiKey = options.apiKey || resolveCompaniesHouseApiKey({});
     if (!apiKey || !apiKey.trim()) {
         throw new Error('Companies House API key is required. Set COMPANIES_HOUSE_API_KEY in .env or in Profile.');
     }
@@ -223,6 +245,7 @@ async function getCompanyByNumber(apiKey, companyNumber) {
 }
 
 module.exports = {
+    resolveCompaniesHouseApiKey,
     fetchCompanies,
     getCompanyByNumber,
     getOfficers,

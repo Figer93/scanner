@@ -3,6 +3,7 @@
  */
 
 const logger = require('../lib/logger');
+const { resolveCompaniesHouseApiKey } = require('../services/companiesHouse');
 const { getLeadById } = require('../services/database');
 const { findWebsiteForLead } = require('./websiteFinder');
 const { scrapeWebsiteContacts } = require('./websiteScraper');
@@ -72,7 +73,7 @@ async function runEnrichmentForLead(ctx) {
     const serperKey = (profile.serper_api_key || process.env.SERPER_API_KEY || '').trim();
     const apifyKey = (profile.apify_api_token || process.env.APIFY_API_TOKEN || '').trim();
     const actorId = (profile.apify_linkedin_actor_id || process.env.APIFY_LINKEDIN_ACTOR_ID || '').trim();
-    const chKey = (profile.companies_house_api_key || process.env.COMPANIES_HOUSE_API_KEY || '').trim();
+    const chKey = resolveCompaniesHouseApiKey(profile);
     const apifyLinkedinEnabled = profile.apify_linkedin_enabled === 'true' || profile.apify_linkedin_enabled === '1';
 
     let website = lead.website || null;

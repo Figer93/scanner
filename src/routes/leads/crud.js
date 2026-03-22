@@ -162,9 +162,9 @@ function mountLeadsCrud(app) {
             const db = await getDb();
             initSchema(db);
             const lead = req.body;
-            const apiKeys = getResolvedKeys(db);
+            const apiKeys = await getResolvedKeys(db);
             const useApi = lead.useApi === true;
-            const apiKey = useApi ? (apiKeys.companies_house_api_key || process.env.COMPANIES_HOUSE_API_KEY || '') : '';
+            const apiKey = useApi ? (apiKeys.companies_house_api_key || '') : '';
             const result = await validateLead(db, lead, { useApi: useApi && !!apiKey, apiKey });
             res.json(result);
         } catch (err) {

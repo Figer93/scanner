@@ -3,12 +3,13 @@
  */
 
 const { getProfile } = require('./database');
+const { resolveCompaniesHouseApiKey } = require('./companiesHouse');
 
 async function getResolvedKeys(db) {
     const profile = await getProfile(db);
     return {
         serper_api_key: profile.serper_api_key || process.env.SERPER_API_KEY || '',
-        companies_house_api_key: profile.companies_house_api_key || process.env.COMPANIES_HOUSE_API_KEY || '',
+        companies_house_api_key: resolveCompaniesHouseApiKey(profile),
         google_places_api_key: profile.google_places_api_key || process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '',
         google_ai_api_key: profile.google_ai_api_key || process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || '',
         charity_commission_api_key: profile.charity_commission_api_key || process.env.CHARITY_COMMISSION_API_KEY || '',

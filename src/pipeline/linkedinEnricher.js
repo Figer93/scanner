@@ -3,7 +3,7 @@
  */
 
 const { serperSearch } = require('../services/search');
-const { getOfficers } = require('../services/companiesHouse');
+const { getOfficers, resolveCompaniesHouseApiKey } = require('../services/companiesHouse');
 const { runApifyActor } = require('../services/linkedin');
 
 /**
@@ -64,7 +64,7 @@ async function enrichLinkedIn(opts) {
     if (!meta || typeof meta !== 'object') meta = {};
 
     let officers = Array.isArray(meta.officers) ? meta.officers : [];
-    const chKey = (apiKeys.companies_house || process.env.COMPANIES_HOUSE_API_KEY || '').trim();
+    const chKey = apiKeys.companies_house || resolveCompaniesHouseApiKey({});
     if (officers.length === 0 && chKey && lead.company_number) {
         try {
             officers = await getOfficers(chKey, lead.company_number);
