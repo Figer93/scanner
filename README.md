@@ -78,7 +78,7 @@ Hash routes are handled in `ui/src/constants/routes.js`.
 **Legacy bookmarks** (removed tabs) still resolve:  
 `#/kanban` → Find Leads, `#/analytics` → home, `#/earnings` and `#/logs` → Profile.
 
-**Optional admin auth:** If `ADMIN_TOKEN` is set, Profile API endpoints require `Authorization: Bearer <token>`. Other JSON APIs used by the dashboard expect the same token if your client sends it (configure in your hosting / frontend as needed).
+**Dashboard login:** If `ADMIN_TOKEN` is set (e.g. in **Railway → Variables**), the SPA shows a sign-in screen. Use the **same value** as the password; the app stores it and sends `Authorization: Bearer <ADMIN_TOKEN>` on API calls. If `ADMIN_TOKEN` is unset, the dashboard stays open (typical local dev). Sign out clears the stored token.
 
 ---
 
@@ -98,19 +98,19 @@ The app is designed to run as **one Railway service** that serves both the API a
 **Recommended**
 
 - `NODE_ENV=production`
-- Mailgun and feature keys as in [Environment variables](#environment-variables), or set via Profile (stored in Supabase).
+- Mailgun and feature keys as in [Environment variables](#environment-variables).
 
 ---
 
 ## Environment variables
 
-Copy `.env.example` to `.env` for local use. In production, set variables in **Railway** (same names); secrets in Profile are persisted in **Supabase** `profile` and override `.env` for those keys.
+Copy `.env.example` to `.env` for local use. In production, set variables in **Railway** (same names).
 
 | Variable | Purpose |
 |----------|---------|
 | `DATABASE_URL` | **Required.** Postgres connection string. |
 | `PORT` | Listen port (Railway injects this). |
-| `ADMIN_TOKEN` | If set, secures Profile (and related) API mutations with Bearer token. |
+| `ADMIN_TOKEN` | If set, dashboard login + Bearer auth for protected APIs (Profile, Pipeline, Earnings, etc.). |
 | `SERPER_API_KEY` | Website discovery via Serper. |
 | `COMPANIES_HOUSE_API_KEY` | CH API + cache sync. |
 | `GOOGLE_AI_API_KEY` | Scoring, ice-breakers, drafts (Gemini). |
@@ -314,7 +314,7 @@ Set **Team members** (comma-separated) in Profile. Names appear in assignment UI
 | `502` + `{"error":"Unauthorized"}` on send / send-reply | Mailgun rejected the API call | Fix `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, **`MAILGUN_REGION` (eu vs us)**, and sender email. Ensure Profile is not overriding with a bad key. |
 | Replies appear but **Send** fails | Inbound does not use your Mailgun **sending** key; outbound does | Same as above — verify sending credentials on Railway. |
 | Opens in Mailgun logs but lead never **Opened** in app | Webhook URL or event types | Add **Webhooks** → `…/api/webhooks/mailgun/events` with **Opened** (and **Delivered** as needed). Redeploy after server fixes. |
-| Profile save 401 | `ADMIN_TOKEN` set | Send `Authorization: Bearer <ADMIN_TOKEN>` on API requests used by your deployment, or align client config. |
+| Profile / Pipeline 401 | `ADMIN_TOKEN` set | Sign in on the dashboard (same value as `ADMIN_TOKEN`), or clear token and sign in again. |
 | Google AI errors | Missing/invalid key | Set `GOOGLE_AI_API_KEY` in Profile or env ([Google AI Studio](https://aistudio.google.com/app/apikey)). |
 
 ---

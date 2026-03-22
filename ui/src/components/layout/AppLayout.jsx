@@ -17,6 +17,7 @@ export default function AppLayout({
   darkMode = true,
   onThemeToggle,
   navBadges = {},
+  onSignOut,
   children,
 }) {
   return (
@@ -55,6 +56,15 @@ export default function AppLayout({
             aria-hidden
           />
           <span className="font-medium">{userName}</span>
+          {typeof onSignOut === 'function' && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="text-xs font-medium text-white/60 hover:text-white border border-white/15 rounded-lg px-2.5 py-1.5 hover:bg-white/5 transition-colors"
+            >
+              Sign out
+            </button>
+          )}
         </div>
       </header>
 

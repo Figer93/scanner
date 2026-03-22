@@ -13,6 +13,7 @@ import { endpoints } from './api/endpoints';
 import { getPageFromHash } from './constants/routes';
 import { useSocketLogs } from './hooks/useSocket';
 import WelcomePage from './pages/welcome/WelcomePage';
+import { AuthGate, useAuth } from './components/auth/AuthGate';
 
 const INBOX_LAST_SEEN_KEY = 'foundlystart_inbox_last_seen_v1';
 
@@ -164,6 +165,7 @@ function AppInner() {
       darkMode={darkMode}
       onThemeToggle={() => setDarkMode((d) => !d)}
       navBadges={{ outreach: outreachUnreadCount }}
+      onSignOut={authRequired ? signOut : undefined}
     >
       {page === 'home' && <Home />}
       {isFindLeads && <LeadsPage />}
@@ -193,7 +195,13 @@ export default function App() {
   const showDashboard = isDashboardHost(hostname);
   return (
     <QueryClientProvider client={queryClient}>
-      {showDashboard ? <AppInner /> : <WelcomePage />}
+      {showDashboard ? (
+        <AuthGate>
+          <AppInner />
+        </AuthGate>
+      ) : (
+        <WelcomePage />
+      )}
     </QueryClientProvider>
   );
 }

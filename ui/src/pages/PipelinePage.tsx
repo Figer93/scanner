@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { io, Socket } from 'socket.io-client';
 import { Activity, CheckCircle2, XCircle, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
-import api from '../api/client';
+import api, { getAdminToken } from '../api/client';
 import { endpoints } from '../api/endpoints';
 import { companyUrl } from '../constants/routes';
 import { Button } from '../components/ui';
@@ -142,7 +142,12 @@ export default function PipelinePage() {
   const SOCKET_REFRESH_MIN_MS = 2500;
 
   useEffect(() => {
-    const socket: Socket = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'] });
+    const token = getAdminToken();
+    const socket: Socket = io(SOCKET_URL, {
+      path: '/socket.io',
+      transports: ['websocket', 'polling'],
+      ...(token ? { auth: { token } } : {}),
+    });
     const onProg = () => {
       const now = Date.now();
       if (now - lastSocketRefreshAt.current < SOCKET_REFRESH_MIN_MS) return;

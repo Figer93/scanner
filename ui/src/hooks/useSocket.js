@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import { getAdminToken } from '../api/client';
 
 const SOCKET_URL = import.meta.env.DEV ? (typeof window !== 'undefined' ? window.location.origin : '') : '';
 
@@ -13,7 +14,12 @@ export function useSocket() {
     const [connected, setConnected] = useState(false);
 
     useEffect(() => {
-        const socket = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'] });
+        const token = getAdminToken();
+        const socket = io(SOCKET_URL, {
+            path: '/socket.io',
+            transports: ['websocket', 'polling'],
+            ...(token ? { auth: { token } } : {}),
+        });
         socketRef.current = socket;
         socket.on('connect', () => setConnected(true));
         socket.on('disconnect', () => setConnected(false));
@@ -35,7 +41,12 @@ export function useSocketLogs(initialLogs = []) {
     const socketRef = useRef(null);
 
     useEffect(() => {
-        const socket = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'] });
+        const token = getAdminToken();
+        const socket = io(SOCKET_URL, {
+            path: '/socket.io',
+            transports: ['websocket', 'polling'],
+            ...(token ? { auth: { token } } : {}),
+        });
         socketRef.current = socket;
         socket.on('log', (message) => {
             setLogs((prev) => [...prev, { id: Date.now(), time: new Date().toISOString(), message: String(message) }]);

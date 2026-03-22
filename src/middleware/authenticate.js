@@ -2,11 +2,10 @@
  * Bearer-token authentication middleware.
  *
  * Behaviour:
- *   - If ADMIN_TOKEN env var is set, requires `Authorization: Bearer <token>`.
+ *   - If ADMIN_TOKEN env var is set, requires `Authorization: Bearer <token>` (same value as dashboard login).
  *   - If ADMIN_TOKEN is NOT set, passes through (backwards-compatible for local dev).
  *
- * This lets production deployments secure sensitive endpoints (profile, schedule)
- * by setting a single env var, while keeping the dev workflow frictionless.
+ * Production: set ADMIN_TOKEN in Railway; the SPA stores it after sign-in and sends this header on API calls.
  */
 
 const logger = require('../lib/logger');

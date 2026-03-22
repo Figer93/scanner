@@ -4,6 +4,7 @@
  */
 
 const { mountHealth } = require('./health');
+const { mountAuth } = require('./auth');
 const { mountLogs } = require('./logs');
 const { mountCompaniesHouse } = require('./companiesHouse');
 const { mountLeads } = require('./leads');
@@ -26,6 +27,7 @@ const { mountEnrichment } = require('./enrichment');
 
 function mountAll(app, context = {}) {
     mountHealth(app);
+    mountAuth(app);
     mountLogs(app);
     mountCompaniesHouse(app);
     mountLeads(app);
