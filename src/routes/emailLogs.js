@@ -89,6 +89,39 @@ function normalizeMessageId(value) {
     return s;
 }
 
+/**
+ * Mailgun HTTP webhooks (JSON): `event` at root, Message-ID in `message.headers['message-id']`.
+ * Legacy: `event-data` may be a JSON string (form POST) or merged with root fields.
+ */
+function pickMailgunMessageIdFromPayload(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+    const mid =
+        obj['message-id'] ||
+        obj.messageId ||
+        obj.message_id ||
+        (obj.message && obj.message.headers && (
+            obj.message.headers['message-id'] ||
+            obj.message.headers['Message-Id']
+        ));
+    return mid != null ? String(mid).trim() : '';
+}
+
+function extractMailgunWebhookEvent(body) {
+    const b = body || {};
+    let ed = b['event-data'];
+    if (typeof ed === 'string') {
+        try {
+            ed = JSON.parse(ed);
+        } catch {
+            ed = null;
+        }
+    }
+    const merged = { ...b, ...(ed && typeof ed === 'object' ? ed : {}) };
+    const event = (merged.event || '').toString().toLowerCase();
+    const messageId = pickMailgunMessageIdFromPayload(merged);
+    return { event, messageId };
+}
+
 /** Best-effort extract an email from "Name <email@x>" */
 function extractEmailAddress(input) {
     if (!input) return '';
@@ -443,18 +476,12 @@ function mountEmailLogs(app) {
             initSchema(db);
             // Basic Mailgun event payload: signature verification should be enabled with MAILGUN_SIGNING_KEY
             const body = req.body || {};
-            const event = (body.event || '').toString().toLowerCase();
-            const providerMessageId = (body['message-id'] || body.messageId || body['Message-Id'] || '').toString();
+            const { event, messageId: providerMessageId } = extractMailgunWebhookEvent(body);
             if (!providerMessageId || !event) {
                 return res.status(400).json({ error: 'message-id and event required' });
             }
 
-            // Lookup by provider_message_id
-            const rows = await db.query(
-                'SELECT * FROM email_logs WHERE provider = $1 AND provider_message_id = $2 LIMIT 1',
-                ['mailgun', providerMessageId]
-            );
-            const logEntry = rows && rows[0] ? rows[0] : null;
+            const logEntry = await getEmailLogByMailgunMessageIdFlexible(db, providerMessageId);
             if (!logEntry) {
                 return res.status(200).json({ ok: true, updated: false });
             }
