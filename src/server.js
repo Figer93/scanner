@@ -78,6 +78,9 @@ async function ensureDb() {
 }
 
 const app = express();
+// Railway (and most hosts) sit behind a reverse proxy that sets X-Forwarded-For.
+// express-rate-limit v8 requires this so rate limits use the real client IP (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR).
+app.set('trust proxy', process.env.TRUST_PROXY === '0' ? false : 1);
 const server = http.createServer(app);
 const io = new SocketServer(server, {
     cors: {
