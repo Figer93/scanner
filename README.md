@@ -1,6 +1,14 @@
 # Foundly Start
 
-**Automated UK business lead enrichment and outreach.** Load companies from Companies House, Google Maps, or file-based sources → find websites (Serper) → scrape contacts (Playwright) → score + draft outreach (Google AI) → store in **PostgreSQL** (e.g. Supabase). Designed to deploy on **Railway** with the React UI served from the same Node process.
+**Automated UK business lead enrichment and outreach.** Load companies from Companies House, Google Maps, or file-based sources → find websites (Serper) → scrape contacts (Playwright) → score + draft outreach (Google AI) → store in PostgreSQL. The React UI is served from the same Node process as the API.
+
+**Production stack (this project is built for):**
+
+| Piece | Role |
+|-------|------|
+| **[Railway](https://railway.app)** | Hosts the Node.js app (API + static UI build). Set env vars here, attach your domain (e.g. `dashboard.…`). |
+| **[Supabase](https://supabase.com)** | Managed **PostgreSQL** — set `DATABASE_URL` to the Supabase connection string (pooler recommended). |
+| **[Mailgun](https://www.mailgun.com)** | **Transactional email:** sending outreach, **event webhooks** (opens/delivered), and **inbound routes** (replies into Outreach). Configure keys and webhook URLs against your Railway public URL. |
 
 **Target users:** Web agencies, SEO/marketing firms, and SaaS providers targeting newly registered UK companies.
 
@@ -9,6 +17,7 @@
 ## Table of contents
 
 - [Features](#features)
+- [Production stack detail](#production-stack-detail)
 - [Web application](#web-application)
 - [Railway deployment](#railway-deployment)
 - [Environment variables](#environment-variables)
@@ -27,6 +36,18 @@
 - [Troubleshooting](#troubleshooting)
 - [Resilience & logging](#resilience--logging)
 - [License](#license)
+
+---
+
+## Production stack detail
+
+Everything below assumes **Railway + Supabase + Mailgun** working together:
+
+- **Railway** runs `node src/server.js`, exposes HTTPS, and injects `PORT`. You add `DATABASE_URL` (pointing at Supabase) and Mailgun-related env vars (or rely on Profile overrides stored in Supabase).
+- **Supabase** holds all app data (`leads`, `email_logs`, `profile`, etc.). Run SQL migrations from `db/migrations/` on your Supabase project. Use the **connection pooler** URI in Railway if you see connection limits.
+- **Mailgun** is separate from Railway: you verify a **sending domain** in Mailgun, then point **webhooks** and **inbound routes** at your **Railway app URL** (e.g. `https://dashboard.example.com/api/webhooks/mailgun/...`). See [Mailgun](#mailgun-send-inbound-replies-openclick-tracking).
+
+No code in this repo is tied to a single vendor beyond standard Postgres and HTTP — but **documentation and defaults assume this trio** for production.
 
 ---
 
@@ -63,24 +84,27 @@ Hash routes are handled in `ui/src/constants/routes.js`.
 
 ## Railway deployment
 
+The app is designed to run as **one Railway service** that serves both the API and the built SPA.
+
 - **Build:** `npm run build` runs the Vite UI build and copies `ui/dist` into `dist/` for Express static hosting.
 - **Start:** `node src/server.js` (see `package.json` `start`).
 - **Port:** Railway sets `PORT`; the app defaults to `3001` if unset.
+- **Domains:** Attach your public hostname(s) in Railway so Mailgun webhooks and browsers hit the same origin you configure in `ALLOWED_ORIGINS` if needed.
 
-**Required**
+**Required on Railway**
 
-- `DATABASE_URL` — PostgreSQL connection string (Supabase pooler URI is recommended for serverless).
+- `DATABASE_URL` — **Supabase** Postgres connection string (use **Session mode** or **Transaction pooler** from Supabase → *Settings → Database*; port `6543` pooler is typical for serverless-style connections).
 
 **Recommended**
 
 - `NODE_ENV=production`
-- Feature keys as below or via Profile where supported.
+- Mailgun and feature keys as in [Environment variables](#environment-variables), or set via Profile (stored in Supabase).
 
 ---
 
 ## Environment variables
 
-Copy `.env.example` to `.env` for local use. On Railway, set variables in the service dashboard.
+Copy `.env.example` to `.env` for local use. In production, set variables in **Railway** (same names); secrets in Profile are persisted in **Supabase** `profile` and override `.env` for those keys.
 
 | Variable | Purpose |
 |----------|---------|
@@ -123,6 +147,8 @@ After changing Railway env vars, **redeploy or restart** the service so the proc
 ---
 
 ## Mailgun (send, inbound replies, open/click tracking)
+
+Mailgun is the **email provider** in the standard production setup (**alongside Railway + Supabase**). Railway provides the HTTPS URL you paste into Mailgun (webhooks and routes); Supabase stores leads and `email_logs` that events attach to.
 
 ### Sending
 
@@ -205,11 +231,16 @@ After a lead is **Enriched**, one-time timestamps record: first send, first open
 
 Companies House REST API, Google Places (Maps pipeline), Serper, Google AI (Gemini), Mailgun (and optional Brevo), Apify (LinkedIn pipeline when configured).
 
-### Typical deployment
+### Production hosting
 
-**Railway** (Node app + env), **Supabase** or any Postgres for `DATABASE_URL` — not pinned in code, but the intended production setup.
+| Service | Use |
+|---------|-----|
+| **Railway** | Runs the Node app; configure env and custom domain here. |
+| **Supabase** | Postgres for `DATABASE_URL`; Profile/settings rows live here. |
+| **Mailgun** | Email provider; webhook URLs target your Railway HTTPS URL. |
 
 ---
+
 
 ## Project structure
 
@@ -239,7 +270,9 @@ Runs the API and the Vite dev server concurrently. Point `DATABASE_URL` at a Pos
 
 ## Database
 
-Migrations live under `db/migrations/`. Apply them in order on your database (including `001_init.sql`, `002_lead_milestones.sql`, `003_email_logs_matched_via.sql`, and later numbered migrations).
+**Supabase** (or any Postgres) hosts application data. Create a project, copy the connection string into Railway as `DATABASE_URL`, then apply migrations.
+
+Migrations live under `db/migrations/`. Run them in order (e.g. via Supabase SQL editor or `psql`), including `001_init.sql`, `002_lead_milestones.sql`, `003_email_logs_matched_via.sql`, and later numbered files.
 
 Core tables include **`leads`**, **`profile`** (key/value settings), **`email_logs`**, **`usage_log`**, and list membership tables. Schema details are in the SQL files.
 
