@@ -11,7 +11,17 @@ const { enrichLinkedIn } = require('./linkedinEnricher');
 const { validateEnrichment } = require('./validator');
 const { insertEnrichmentLog, upsertCompanyContacts, applyLeadEnrichmentUpdate } = require('./dbUpdater');
 
-const STAGE_MS = 5000;
+/** @param {string} envKey @param {number} fallback */
+function stageMs(envKey, fallback) {
+    const n = parseInt(process.env[envKey], 10);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+/** Per-stage caps (5s was too low for Serper queue, Playwright, multi-call LinkedIn). */
+const WEBSITE_FIND_MS = stageMs('ENRICHMENT_WEBSITE_FIND_MS', 25_000);
+const WEBSITE_SCRAPE_MS = stageMs('ENRICHMENT_WEBSITE_SCRAPE_MS', 45_000);
+const LINKEDIN_MS = stageMs('ENRICHMENT_LINKEDIN_MS', 45_000);
+const VALIDATE_MS = stageMs('ENRICHMENT_VALIDATE_MS', 12_000);
 
 /**
  * @template T
@@ -111,7 +121,7 @@ async function runEnrichmentForLead(ctx) {
                     serperAcquire: limits.serperAcquire,
                     logger: log,
                 }),
-                STAGE_MS,
+                WEBSITE_FIND_MS,
                 'website_find'
             );
             website = r.website;
@@ -152,7 +162,7 @@ async function runEnrichmentForLead(ctx) {
                     getBrowser: limits.getBrowser,
                     logger: log,
                 }),
-                STAGE_MS,
+                WEBSITE_SCRAPE_MS,
                 'website_scrape'
             );
             emails = [...new Set([...emails, ...scraped.emails])];
@@ -216,7 +226,7 @@ async function runEnrichmentForLead(ctx) {
                     apifyLinkedinEnabled,
                     logger: log,
                 }),
-                STAGE_MS,
+                LINKEDIN_MS,
                 'linkedin'
             );
             source_metadata = li.updatedSourceMetadata || source_metadata;
@@ -280,7 +290,7 @@ async function runEnrichmentForLead(ctx) {
                     linkedinCompanyUrl: linkedin_url || liCompanyFromSerper,
                     linkedinPersonUrls: liPersonUrls,
                 }),
-                3000,
+                VALIDATE_MS,
                 'validate'
             );
             await insertEnrichmentLog(db, {
