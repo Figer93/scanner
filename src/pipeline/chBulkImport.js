@@ -72,14 +72,17 @@ async function runChBulkImport(opts) {
     let total = 0;
 
     while (startIndex < MAX_TOTAL) {
+        // Query param names must match Companies House API (same as src/services/companiesHouse.js — `status`, not `company_status`).
         const params = {
             incorporated_from: incorporatedFrom,
             incorporated_to: incorporatedTo,
             size: PAGE_SIZE,
-            start_index: startIndex,
         };
+        if (startIndex > 0) {
+            params.start_index = startIndex;
+        }
         if (filters.companyStatus && String(filters.companyStatus).toLowerCase() !== 'all') {
-            params.company_status = filters.companyStatus;
+            params.status = filters.companyStatus;
         }
         const sicCodes = filters.sicCodes || filters.sic_codes;
         if (Array.isArray(sicCodes) && sicCodes.length > 0) {
@@ -91,11 +94,30 @@ async function runChBulkImport(opts) {
             params.location = filters.jurisdiction || filters.location;
         }
 
-        const response = await axios.get(CH_BASE + '/advanced-search/companies', {
-            params,
-            headers: { Authorization: `Basic ${auth}` },
-            timeout: 30000,
-        });
+        let response;
+        try {
+            response = await axios.get(CH_BASE + '/advanced-search/companies', {
+                params,
+                headers: { Authorization: `Basic ${auth}` },
+                timeout: 30000,
+                validateStatus: () => true,
+            });
+        } catch (err) {
+            const msg = err.message || String(err);
+            logger.error({ err: msg, incorporatedFrom, incorporatedTo }, 'CH advanced-search request failed');
+            throw new Error(`Companies House request failed: ${msg}`);
+        }
+
+        if (response.status < 200 || response.status >= 300) {
+            const body = response.data;
+            const snippet =
+                typeof body === 'object' && body !== null
+                    ? JSON.stringify(body).slice(0, 500)
+                    : String(body || '').slice(0, 500);
+            const errMsg = `Companies House API ${response.status}: ${snippet || response.statusText}`;
+            logger.error({ status: response.status, body: snippet }, 'CH advanced-search non-OK');
+            throw new Error(errMsg);
+        }
 
         const items = response.data?.items || [];
         total = response.data?.total_count != null ? response.data.total_count : startIndex + items.length;

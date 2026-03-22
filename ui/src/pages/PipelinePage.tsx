@@ -187,6 +187,20 @@ export default function PipelinePage() {
 
   const failedLeads = useMemo(() => jobLeads.filter((l) => (l.enrichment_status || '').toLowerCase() === 'failed'), [jobLeads]);
 
+  const activeJob = useMemo(() => jobs.find((j) => j.id === activeJobId), [jobs, activeJobId]);
+  const jobOutcome = useMemo(() => {
+    if (!activeJob) return null;
+    const f = activeJob.filters;
+    if (!f || typeof f !== 'object' || Array.isArray(f)) {
+      return { lastError: null, lastErrorDetail: null, message: null, outcome: null };
+    }
+    const lastError = typeof f.lastError === 'string' ? f.lastError : null;
+    const lastErrorDetail = typeof f.lastErrorDetail === 'string' ? f.lastErrorDetail : null;
+    const message = typeof f.message === 'string' ? f.message : null;
+    const outcome = typeof f.outcome === 'string' ? f.outcome : null;
+    return { lastError, lastErrorDetail, message, outcome };
+  }, [activeJob]);
+
   return (
     <div className="min-h-full bg-[#0d0f12] text-white/90">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -329,6 +343,31 @@ export default function PipelinePage() {
           </select>
         </div>
 
+        {activeJob && (activeJob.status === 'failed' || jobOutcome?.outcome === 'no_companies') && (
+          <div
+            className={`rounded-xl border px-4 py-3 text-sm ${
+              activeJob.status === 'failed'
+                ? 'border-red-500/40 bg-red-950/40 text-red-100'
+                : 'border-amber-500/30 bg-amber-950/30 text-amber-100'
+            }`}
+          >
+            {activeJob.status === 'failed' && jobOutcome.lastError && (
+              <p className="font-medium text-white">Job failed: {jobOutcome.lastError}</p>
+            )}
+            {activeJob.status === 'failed' && jobOutcome.lastErrorDetail && (
+              <pre className="mt-2 text-xs whitespace-pre-wrap break-all text-white/70 max-h-48 overflow-auto font-mono">
+                {jobOutcome.lastErrorDetail}
+              </pre>
+            )}
+            {jobOutcome.outcome === 'no_companies' && jobOutcome.message && (
+              <p className="text-white/90">{jobOutcome.message}</p>
+            )}
+            {activeJob.status === 'failed' && !jobOutcome.lastError && (
+              <p className="text-white/70">No error details stored. Check server logs for this job id.</p>
+            )}
+          </div>
+        )}
+
         {/* Live table */}
         <div className="rounded-xl border border-white/10 bg-[#161920] overflow-hidden">
           <div className="px-4 py-3 border-b border-white/10 text-sm font-medium">Live job</div>
@@ -350,7 +389,11 @@ export default function PipelinePage() {
                 {jobLeads.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-6 text-center text-white/40">
-                      No leads for this job yet — start a job or pick another job.
+                      {activeJob?.status === 'failed'
+                        ? 'No leads were imported before this job failed. See the message above.'
+                        : jobOutcome?.outcome === 'no_companies'
+                          ? 'No companies matched this search (or all were already in your leads).'
+                          : 'No leads for this job yet — start a job or pick another job.'}
                     </td>
                   </tr>
                 ) : (

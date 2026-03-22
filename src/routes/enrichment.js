@@ -82,6 +82,39 @@ function defaultIncorporationRange() {
     };
 }
 
+/**
+ * Merge a patch into enrichment_jobs.filters (JSONB) so failures surface in the API/UI.
+ * @param {{ run: Function }} db
+ * @param {string} jobId
+ * @param {Record<string, unknown>} patch
+ */
+async function mergeJobFilters(db, jobId, patch) {
+    const payload = JSON.stringify(patch);
+    await db.run(`UPDATE enrichment_jobs SET filters = COALESCE(filters, '{}'::jsonb) || $1::jsonb WHERE id = $2::uuid`, [payload, jobId]);
+}
+
+/**
+ * @param {unknown} err
+ */
+function enrichmentFailurePatch(err) {
+    const msg = err && typeof err === 'object' && 'message' in err ? String(/** @type {{ message?: string }} */ (err).message) : String(err);
+    const ax = /** @type {{ response?: { status?: number, data?: unknown } }} */ (err);
+    let detail = msg;
+    if (ax.response?.data != null) {
+        try {
+            detail = typeof ax.response.data === 'string' ? ax.response.data : JSON.stringify(ax.response.data);
+        } catch {
+            detail = msg;
+        }
+    }
+    if (detail.length > 4000) detail = detail.slice(0, 4000) + '…';
+    return {
+        lastError: msg.slice(0, 500),
+        lastErrorDetail: detail,
+        lastErrorAt: new Date().toISOString(),
+    };
+}
+
 function mountEnrichment(app, context = {}) {
     const io = context.io || getIo();
 
@@ -134,6 +167,11 @@ function mountEnrichment(app, context = {}) {
                         io,
                     });
                     if (leadIds.length === 0) {
+                        await mergeJobFilters(db, jobId, {
+                            outcome: 'no_companies',
+                            message:
+                                'No new companies were imported for this date range (Companies House returned no hits, or every company_number already exists in leads).',
+                        });
                         await db.run(
                             `UPDATE enrichment_jobs SET status = 'done', completed_at = CURRENT_TIMESTAMP, total_companies = 0 WHERE id = $1::uuid`,
                             [jobId]
@@ -149,8 +187,9 @@ function mountEnrichment(app, context = {}) {
                         profile,
                     });
                 } catch (err) {
-                    logger.error({ err: err.message, jobId }, 'enrichment job failed');
+                    logger.error({ err: err.message, jobId, stack: err.stack }, 'enrichment job failed');
                     try {
+                        await mergeJobFilters(db, jobId, enrichmentFailurePatch(err));
                         await db.run(
                             `UPDATE enrichment_jobs SET status = 'failed', completed_at = CURRENT_TIMESTAMP WHERE id = $1::uuid`,
                             [jobId]
