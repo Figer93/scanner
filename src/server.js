@@ -16,6 +16,7 @@ const compression = require('compression');
 const config = require('./config');
 const logger = require('./lib/logger');
 const { getDb, initSchema, getProfile } = require('./services/database');
+const { ensureEnrichmentSchema } = require('./db/enrichmentBootstrap');
 const { runPipeline } = require('./index');
 const { runQueue } = require('./services/emailQueue');
 const { initServerContext, persistAndEmitLog } = require('./serverContext');
@@ -73,9 +74,8 @@ async function startScheduledRuns() {
 async function ensureDb() {
     const db = await getDb();
     initSchema(db);
+    await ensureEnrichmentSchema(db);
 }
-
-ensureDb().catch((err) => logger.error({ err }, 'DB init failed'));
 
 const app = express();
 const server = http.createServer(app);
@@ -174,21 +174,29 @@ app.get(/^(?!\/api)(?!\/assets)/, (req, res) => {
 
 const EMAIL_QUEUE_INTERVAL_MS = 5 * 60 * 1000;
 
-server.listen(config.PORT, async () => {
-    logger.info({ port: config.PORT }, 'Server running');
+(async () => {
     try {
-        const db = await getDb();
-        initSchema(db);
-        await startScheduledRuns();
-        setInterval(() => {
-            runQueue().catch((err) => logger.error({ err: err.message }, 'Email queue run failed'));
-        }, EMAIL_QUEUE_INTERVAL_MS);
-        setTimeout(() => {
-            runQueue().catch((err) => logger.error({ err: err.message }, 'Email queue first run failed'));
-        }, 10 * 1000);
+        await ensureDb();
     } catch (err) {
-        logger.error({ err }, 'Post-startup init failed');
+        logger.error({ err }, 'Database bootstrap failed (server will still start; enrichment may error until DB is fixed)');
     }
-});
+
+    server.listen(config.PORT, async () => {
+        logger.info({ port: config.PORT }, 'Server running');
+        try {
+            const db = await getDb();
+            initSchema(db);
+            await startScheduledRuns();
+            setInterval(() => {
+                runQueue().catch((err) => logger.error({ err: err.message }, 'Email queue run failed'));
+            }, EMAIL_QUEUE_INTERVAL_MS);
+            setTimeout(() => {
+                runQueue().catch((err) => logger.error({ err: err.message }, 'Email queue first run failed'));
+            }, 10 * 1000);
+        } catch (err) {
+            logger.error({ err }, 'Post-startup init failed');
+        }
+    });
+})();
 
 module.exports = { server, app, io };

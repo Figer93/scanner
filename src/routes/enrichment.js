@@ -15,6 +15,34 @@ const {
 } = require('../serverContext');
 const { runChBulkImport } = require('../pipeline/chBulkImport');
 const { runWorkerPool } = require('../pipeline/workerPool');
+const { ensureEnrichmentSchema } = require('../db/enrichmentBootstrap');
+
+/** True when Postgres reports missing table/column (migration not applied and bootstrap skipped/failed). */
+function isMissingEnrichmentRelation(err) {
+    if (!err) return false;
+    if (err.code === '42P01' || err.code === '42703') return true;
+    const msg = String(err.message || '');
+    return /relation .+ does not exist/i.test(msg) || /column .+ does not exist/i.test(msg);
+}
+
+let enrichmentSchemaReady = false;
+/** @type {Promise<void> | null} */
+let enrichmentSchemaPromise = null;
+
+async function ensureEnrichmentReady(db) {
+    if (enrichmentSchemaReady) return;
+    if (!enrichmentSchemaPromise) {
+        enrichmentSchemaPromise = ensureEnrichmentSchema(db)
+            .then(() => {
+                enrichmentSchemaReady = true;
+            })
+            .catch((e) => {
+                enrichmentSchemaPromise = null;
+                throw e;
+            });
+    }
+    await enrichmentSchemaPromise;
+}
 
 const startJobSchema = z
     .object({
@@ -59,10 +87,13 @@ function mountEnrichment(app, context = {}) {
 
     app.post('/api/enrichment/jobs', authenticate, validate(startJobSchema), async (req, res) => {
         try {
+            const db0 = await getDb();
+            await ensureEnrichmentReady(db0);
+
             if (backgroundJob.running || isDeepEnrichmentRunning()) {
                 return res.status(409).json({ error: 'Another background or enrichment job is already running' });
             }
-            const db = await getDb();
+            const db = db0;
             initSchema(db);
             const profile = await getProfile(db);
             const chKey = (profile.companies_house_api_key || process.env.COMPANIES_HOUSE_API_KEY || '').trim();
@@ -132,7 +163,12 @@ function mountEnrichment(app, context = {}) {
                 }
             })().catch((err) => logger.error({ err }, 'enrichment async'));
         } catch (err) {
-            logger.error({ err }, 'POST /api/enrichment/jobs');
+            logger.error({ err: err.message, code: err.code }, 'POST /api/enrichment/jobs');
+            if (isMissingEnrichmentRelation(err)) {
+                return res.status(503).json({
+                    error: 'Enrichment database objects are missing. Redeploy the app or run db/migrations/005_deep_enrichment.sql in Supabase.',
+                });
+            }
             res.status(500).json({ error: 'Failed to start job' });
         }
     });
@@ -140,13 +176,17 @@ function mountEnrichment(app, context = {}) {
     app.get('/api/enrichment/jobs', authenticate, async (req, res) => {
         try {
             const db = await getDb();
+            await ensureEnrichmentReady(db);
             const rows = await db.query(
                 `SELECT id, status, total_companies, processed, failed_count, concurrency, filters, created_at, started_at, completed_at
                  FROM enrichment_jobs ORDER BY created_at DESC LIMIT 20`
             );
             res.json({ jobs: rows });
         } catch (err) {
-            logger.error({ err }, 'GET /api/enrichment/jobs');
+            logger.error({ err: err.message, code: err.code }, 'GET /api/enrichment/jobs');
+            if (isMissingEnrichmentRelation(err)) {
+                return res.json({ jobs: [] });
+            }
             res.status(500).json({ error: 'Failed to list jobs' });
         }
     });
@@ -156,6 +196,7 @@ function mountEnrichment(app, context = {}) {
             const parsed = uuidParam.safeParse({ id: req.params.id });
             if (!parsed.success) return res.status(400).json({ error: 'Invalid job id' });
             const db = await getDb();
+            await ensureEnrichmentReady(db);
             const job = await db.queryOne(
                 `SELECT id, status, total_companies, processed, failed_count, concurrency, filters, created_at, started_at, completed_at
                  FROM enrichment_jobs WHERE id = $1::uuid`,
@@ -216,6 +257,7 @@ function mountEnrichment(app, context = {}) {
     app.post('/api/enrichment/jobs/:id/pause', authenticate, async (req, res) => {
         try {
             const db = await getDb();
+            await ensureEnrichmentReady(db);
             await db.run(`UPDATE enrichment_jobs SET status = 'paused' WHERE id = $1::uuid`, [req.params.id]);
             res.json({ ok: true });
         } catch (err) {
@@ -227,6 +269,7 @@ function mountEnrichment(app, context = {}) {
     app.post('/api/enrichment/jobs/:id/resume', authenticate, async (req, res) => {
         try {
             const db = await getDb();
+            await ensureEnrichmentReady(db);
             await db.run(`UPDATE enrichment_jobs SET status = 'running' WHERE id = $1::uuid`, [req.params.id]);
             res.json({ ok: true });
         } catch (err) {
@@ -238,6 +281,7 @@ function mountEnrichment(app, context = {}) {
     app.post('/api/enrichment/jobs/:id/cancel', authenticate, async (req, res) => {
         try {
             const db = await getDb();
+            await ensureEnrichmentReady(db);
             await db.run(`UPDATE enrichment_jobs SET status = 'cancelled', completed_at = CURRENT_TIMESTAMP WHERE id = $1::uuid`, [
                 req.params.id,
             ]);
@@ -257,7 +301,9 @@ function mountEnrichment(app, context = {}) {
             if (!leadIds || leadIds.length === 0) {
                 return res.status(400).json({ error: 'leadIds required' });
             }
-            const db = await getDb();
+            const db0 = await getDb();
+            await ensureEnrichmentReady(db0);
+            const db = db0;
             const profile = await getProfile(db);
             res.status(202).json({ ok: true, message: 'Retry queued' });
 
@@ -291,6 +337,7 @@ function mountEnrichment(app, context = {}) {
                 return res.status(400).json({ error: 'Invalid lead id' });
             }
             const db = await getDb();
+            await ensureEnrichmentReady(db);
             const rows = await db.query(
                 `SELECT id, lead_id, job_id, stage, status, duration_ms, detail, created_at
                  FROM enrichment_logs WHERE lead_id = $1 ORDER BY created_at ASC`,
@@ -306,6 +353,7 @@ function mountEnrichment(app, context = {}) {
     app.get('/api/enrichment/stats', authenticate, async (req, res) => {
         try {
             const db = await getDb();
+            await ensureEnrichmentReady(db);
             const queueRow = await db.queryOne(
                 `SELECT COUNT(*)::int AS c FROM leads WHERE enrichment_status IN ('pending', 'running')`
             );
@@ -340,7 +388,19 @@ function mountEnrichment(app, context = {}) {
                 activeJob: activeJob || null,
             });
         } catch (err) {
-            logger.error({ err }, 'GET /api/enrichment/stats');
+            logger.error({ err: err.message, code: err.code }, 'GET /api/enrichment/stats');
+            if (isMissingEnrichmentRelation(err)) {
+                return res.json({
+                    queue: 0,
+                    processingNow: 0,
+                    completedToday: 0,
+                    failed: 0,
+                    successRate: null,
+                    activeWorkers: 0,
+                    totalWorkers: 0,
+                    activeJob: null,
+                });
+            }
             res.status(500).json({ error: 'Failed to load stats' });
         }
     });
