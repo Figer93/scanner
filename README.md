@@ -167,14 +167,47 @@ After a lead is **Enriched**, one-time timestamps record: first send, first open
 
 ## Tech stack
 
+### Backend (`src/`)
+
 | Layer | Technology |
 |-------|------------|
 | Runtime | Node.js |
-| Backend | Express, Socket.IO (logs stream to Profile pipeline UI) |
-| Database | PostgreSQL |
-| Browser automation | Playwright (Chromium) |
-| APIs | Companies House, Google Places, Serper, Google AI (Gemini), Mailgun, optional Brevo |
-| Frontend | React, Vite, TanStack Query (`ui/`) |
+| HTTP API | Express 5, `compression`, `cors`, `express-rate-limit` |
+| Real-time | Socket.IO (pipeline / log stream to Profile) |
+| Database | `pg` driver → PostgreSQL (SQL migrations in `db/migrations/`) |
+| Validation | Zod |
+| HTTP client | Axios (Mailgun, outbound integrations) |
+| Logging | Pino |
+| Upload / webhooks | Multer (multipart and Mailgun-style bodies) |
+| Scheduling | `node-cron` |
+| Browser automation | Playwright (Chromium) — contact scraping |
+| Spreadsheets | `xlsx` (server-side export paths) |
+
+### Frontend (`ui/`)
+
+| Layer | Technology |
+|-------|------------|
+| UI | React 19 |
+| Build | Vite 8 |
+| Language | TypeScript and JavaScript (mixed) |
+| Styling | Tailwind CSS, PostCSS |
+| Server state | TanStack Query (React Query) |
+| Client state | Zustand |
+| Forms | React Hook Form + Zod (`@hookform/resolvers`) |
+| Charts | Recharts |
+| Icons | Lucide React |
+| HTTP | Axios |
+| Real-time | `socket.io-client` |
+| Tables / export | SheetJS (`xlsx`) |
+| Tooling | ESLint, Vitest (UI tests) |
+
+### External services
+
+Companies House REST API, Google Places (Maps pipeline), Serper, Google AI (Gemini), Mailgun (and optional Brevo), Apify (LinkedIn pipeline when configured).
+
+### Typical deployment
+
+**Railway** (Node app + env), **Supabase** or any Postgres for `DATABASE_URL` — not pinned in code, but the intended production setup.
 
 ---
 
