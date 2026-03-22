@@ -61,6 +61,7 @@ function useHashRoute() {
 const THEME_STORAGE_KEY = 'foundlystart_theme';
 
 function AppInner() {
+  const { authRequired, signOut } = useAuth();
   const { page, leadId, companyNumber, conversationLeadId } = useHashRoute();
   const [logs, setLogs, clearLogs] = useSocketLogs();
   const [userName, setUserName] = useState('User');
