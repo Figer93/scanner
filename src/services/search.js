@@ -42,6 +42,19 @@ const BLACKLIST = [
 /** Path segments that indicate a directory/listing page, not a company homepage */
 const DIRECTORY_PATH_PATTERNS = /^(postcode|search|listing|listings|directory|companies|company-list|business-list|results?|find|browse|en\/[^/]+\/(postcode|search|listing|company))/i;
 
+/**
+ * Clamp Serper `num` (organic results per request). Set SERPER_NUM_RESULTS=2 (or SERPER_MAX_RESULTS) for testing.
+ * @param {number} requested
+ * @returns {number}
+ */
+function capSerperNum(requested) {
+    const r = Math.min(100, Math.max(1, parseInt(String(requested), 10) || 10));
+    const capRaw = (process.env.SERPER_NUM_RESULTS || process.env.SERPER_MAX_RESULTS || '').trim();
+    const cap = parseInt(capRaw, 10);
+    if (!Number.isFinite(cap) || cap < 1) return r;
+    return Math.min(r, Math.min(100, cap));
+}
+
 function isBlacklisted(link) {
     const lower = (link || '').toLowerCase();
     return BLACKLIST.some(b => lower.includes(b));
@@ -109,6 +122,8 @@ async function serperSearch(query, num = 10, companyWords = [], opts = {}) {
     const apiKey = opts.apiKey || process.env.SERPER_API_KEY;
     if (!apiKey || !apiKey.trim()) throw new Error('SERPER_API_KEY is required (set in .env or Profile)');
 
+    const cappedNum = capSerperNum(num);
+
     const response = await axios({
         method: 'post',
         url: 'https://google.serper.dev/search',
@@ -116,11 +131,11 @@ async function serperSearch(query, num = 10, companyWords = [], opts = {}) {
             'X-API-KEY': apiKey.trim(),
             'Content-Type': 'application/json'
         },
-        data: JSON.stringify({ q: query, num })
+        data: JSON.stringify({ q: query, num: cappedNum })
     });
 
     const data = response.data || {};
-    const organic = data.organic || [];
+    const organic = (data.organic || []).slice(0, cappedNum);
     const kg = data.knowledgeGraph || {};
     const kgWebsite = kg.website || kg.attributes?.Website;
 
@@ -251,6 +266,7 @@ async function findWebsite(companyName, logger, opts = {}) {
 module.exports = {
     findWebsite,
     serperSearch,
+    capSerperNum,
     pickBestFromResults,
     rankedResultLinks,
     isBlacklisted,
