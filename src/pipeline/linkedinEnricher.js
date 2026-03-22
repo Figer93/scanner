@@ -39,7 +39,7 @@ async function enrichLinkedIn(opts) {
     if (apiKeys.serper) {
         try {
             if (serperAcquire) await serperAcquire();
-            const q = `site:linkedin.com/company "${rawName}"`;
+            const q = `site:linkedin.com/company "${rawName}" United Kingdom`;
             const organic = await serperSearch(q, 10, [], { apiKey: apiKeys.serper });
             for (const row of organic || []) {
                 const link = row.link || row.url || '';
@@ -80,7 +80,7 @@ async function enrichLinkedIn(opts) {
             if (!name || name === '—') continue;
             try {
                 if (serperAcquire) await serperAcquire();
-                const q = `site:linkedin.com/in "${name}" "${rawName}"`;
+                const q = `site:linkedin.com/in "${name}" "${rawName}" United Kingdom`;
                 const organic = await serperSearch(q, 5, [], { apiKey: apiKeys.serper });
                 for (const row of organic || []) {
                     const link = row.link || row.url || '';

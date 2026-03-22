@@ -6,6 +6,13 @@
 const axios = require('axios');
 
 const BLACKLIST = [
+    'vat-search',
+    'vatsearch',
+    'vat-check',
+    'vatcheck',
+    'companycheck',
+    'bizstats',
+    'duedil',
     'northdata',
     'endole',
     'opencorporates',
@@ -18,7 +25,6 @@ const BLACKLIST = [
     'p-o.co.uk',
     'check-business',
     'company-information.service.gov.uk',
-    'duedil',
     'companieslist.org',
     'company-directory.co.uk',
     'bizdb.co.uk',
@@ -155,6 +161,36 @@ function pickBestFromResults(results, companyWords) {
 }
 
 /**
+ * Same ranking as pickBestFromResults but returns ordered candidates for sequential verification (HTML copy checks).
+ * @param {Array<{ link: string }>} results
+ * @param {string[]} companyWords
+ * @returns {string[]}
+ */
+function rankedResultLinks(results, companyWords) {
+    const scored = [];
+    for (const res of results || []) {
+        const link = res.link;
+        if (!link) continue;
+        if (isBlacklisted(link)) continue;
+        if (isDirectoryOrListingUrl(link)) continue;
+        const domainScore = scoreDomainMatch(link, companyWords);
+        const pathSc = pathScore(link);
+        const score = domainScore * 0.7 + pathSc * 0.3;
+        if (companyWords.length > 0 && domainScore < 0.25) continue;
+        scored.push({ link, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    const out = [];
+    const seen = new Set();
+    for (const s of scored) {
+        if (seen.has(s.link)) continue;
+        seen.add(s.link);
+        out.push(s.link);
+    }
+    return out;
+}
+
+/**
  * Find company website using multiple query fallbacks.
  * @param {string} companyName
  * @param {import('pino').Logger} [logger]
@@ -216,6 +252,7 @@ module.exports = {
     findWebsite,
     serperSearch,
     pickBestFromResults,
+    rankedResultLinks,
     isBlacklisted,
     isDirectoryOrListingUrl,
     pathScore,

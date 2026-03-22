@@ -117,6 +117,7 @@ async function runEnrichmentForLead(ctx) {
                 findWebsiteForLead({
                     companyName: lead.company_name,
                     existingWebsite: lead.website,
+                    postcode: lead.postcode,
                     apiKey: serperKey,
                     serperAcquire: limits.serperAcquire,
                     logger: log,

@@ -7,6 +7,48 @@ const { fetchHtmlCheck, looksLikeParking } = require('./websiteFinder');
 
 const UK_E164 = /^\+44[1-9]\d{8,9}$/;
 
+const FREE_EMAIL_DOMAINS = new Set([
+    'gmail.com',
+    'googlemail.com',
+    'yahoo.com',
+    'yahoo.co.uk',
+    'hotmail.com',
+    'outlook.com',
+    'live.com',
+    'icloud.com',
+    'proton.me',
+    'protonmail.com',
+]);
+
+/**
+ * Corporate mailbox should sit on the same registrable domain as the company website when both are known.
+ * @param {string | null} email
+ * @param {string | null} websiteUrl
+ */
+function emailDomainAlignsWithWebsite(email, websiteUrl) {
+    if (!email || !websiteUrl) return true;
+    const at = String(email).indexOf('@');
+    if (at < 0) return false;
+    const dom = String(email)
+        .slice(at + 1)
+        .trim()
+        .toLowerCase();
+    if (!dom || FREE_EMAIL_DOMAINS.has(dom)) return true;
+    try {
+        const u = new URL(websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`);
+        let host = u.hostname.replace(/^www\./, '').toLowerCase();
+        if (host === dom) return true;
+        if (host.endsWith(`.${dom}`) || dom.endsWith(`.${host}`)) return true;
+        const root = (h) => {
+            const p = h.split('.').filter(Boolean);
+            return p.length >= 2 ? p.slice(-2).join('.') : h;
+        };
+        return root(host) === root(dom);
+    } catch {
+        return false;
+    }
+}
+
 /**
  * @param {string} email
  * @returns {Promise<boolean>}
@@ -86,8 +128,11 @@ function validateUkPhoneE164(phone) {
 async function validateEnrichment(input) {
     const { bestEmail, website, phones, linkedinCompanyUrl, linkedinPersonUrls } = input;
 
+    const mxOk = bestEmail ? await validateEmailMx(bestEmail) : false;
+    const domainAligns = emailDomainAlignsWithWebsite(bestEmail, website);
+
     const checks = await Promise.all([
-        bestEmail ? validateEmailMx(bestEmail) : Promise.resolve(false),
+        Promise.resolve(mxOk && domainAligns),
         website ? validateWebsiteHttps(website) : Promise.resolve(false),
         Promise.resolve((phones || []).some((p) => validateUkPhoneE164(p))),
         linkedinCompanyUrl ? validateLinkedInUrl(linkedinCompanyUrl) : Promise.resolve(false),
@@ -125,4 +170,5 @@ module.exports = {
     validateEmailMx,
     validateLinkedInUrl,
     validateUkPhoneE164,
+    emailDomainAlignsWithWebsite,
 };

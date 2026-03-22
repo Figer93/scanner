@@ -3,7 +3,7 @@
  */
 
 const axios = require('axios');
-const { serperSearch, pickBestFromResults } = require('../services/search');
+const { serperSearch, rankedResultLinks } = require('../services/search');
 const { BOT_UA } = require('./robotsAllow');
 
 const BLOCKED_SUBSTR = [
@@ -14,7 +14,75 @@ const BLOCKED_SUBSTR = [
     'twitter',
     'yell',
     'yelp',
+    'vat-search',
+    'vatsearch',
+    'companycheck',
+    'bizstats',
 ];
+
+const NAME_STOPWORDS = new Set([
+    'and',
+    'the',
+    'ltd',
+    'limited',
+    'plc',
+    'llp',
+    'llc',
+    'for',
+    'uk',
+    'company',
+    'services',
+    'holdings',
+    'group',
+]);
+
+/**
+ * Words from the legal name that should appear on a genuine company site (length ≥ 3).
+ * @param {string} companyName
+ * @returns {string[]}
+ */
+function significantCompanyWords(companyName) {
+    const raw = String(companyName || '')
+        .replace(/&/g, ' and ')
+        .replace(/\b(ltd|limited|plc|llp|llc)\b/gi, ' ');
+    return raw
+        .toLowerCase()
+        .split(/[\s\-&.,]+/)
+        .map((w) => w.trim())
+        .filter((w) => w.length >= 3 && !NAME_STOPWORDS.has(w));
+}
+
+/**
+ * Strip HTML to loose text for substring checks.
+ * @param {string} html
+ * @returns {string}
+ */
+function htmlToLooseText(html) {
+    return String(html || '')
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .toLowerCase();
+}
+
+/**
+ * True if page text plausibly describes this UK company (reduces US/homonym sites).
+ * @param {string} html
+ * @param {string} companyName
+ * @param {string | null | undefined} _postcode optional; reserved for stricter UK checks later
+ */
+function htmlSupportsCompanyIdentity(html, companyName, _postcode) {
+    const text = htmlToLooseText(html);
+    const words = significantCompanyWords(companyName);
+    if (words.length === 0) return true;
+    const need = words.length <= 1 ? 1 : Math.ceil(words.length * 0.6);
+    let hits = 0;
+    for (const w of words) {
+        if (text.includes(w)) hits++;
+    }
+    if (hits < need) return false;
+    return true;
+}
 
 const PARKING_SNIPPETS = [
     'this domain is for sale',
@@ -80,6 +148,7 @@ function domainCandidates(companyName) {
  * @param {{
  *   companyName: string,
  *   existingWebsite?: string | null,
+ *   postcode?: string | null,
  *   apiKey?: string,
  *   serperAcquire?: () => Promise<void>,
  *   logger?: import('pino').Logger
@@ -87,13 +156,13 @@ function domainCandidates(companyName) {
  * @returns {Promise<{ website: string | null, website_status: 'found'|'not_found'|'parked', website_checked_at: string }>}
  */
 async function findWebsiteForLead(opts) {
-    const { companyName, existingWebsite, apiKey, serperAcquire, logger } = opts;
+    const { companyName, existingWebsite, postcode, apiKey, serperAcquire, logger } = opts;
     const checkedAt = new Date().toISOString();
 
     if (existingWebsite && String(existingWebsite).trim()) {
         const u = String(existingWebsite).trim();
         const { finalUrl, ok, body } = await fetchHtmlCheck(u);
-        if (ok) {
+        if (ok && htmlSupportsCompanyIdentity(body, companyName, postcode)) {
             return { website: finalUrl, website_status: 'found', website_checked_at: checkedAt };
         }
         if (body && looksLikeParking(body)) {
@@ -112,12 +181,14 @@ async function findWebsiteForLead(opts) {
             const query = `"${rawName}" site UK official`;
             const organic = await serperSearch(query, 10, companyWords, { apiKey });
             const filtered = organic.filter((o) => o.link && !isBlockedUrl(o.link));
-            const best = pickBestFromResults(filtered, companyWords);
-            if (best) {
-                const { finalUrl, ok, body } = await fetchHtmlCheck(best);
-                if (ok) return { website: finalUrl, website_status: 'found', website_checked_at: checkedAt };
+            const candidates = rankedResultLinks(filtered, companyWords);
+            for (const cand of candidates) {
+                const { finalUrl, ok, body } = await fetchHtmlCheck(cand);
+                if (ok && htmlSupportsCompanyIdentity(body, rawName, postcode)) {
+                    return { website: finalUrl, website_status: 'found', website_checked_at: checkedAt };
+                }
                 if (body && looksLikeParking(body)) {
-                    return { website: finalUrl, website_status: 'parked', website_checked_at: checkedAt };
+                    /* try other results; parked single-result case is rare */
                 }
             }
         } catch (err) {
@@ -138,7 +209,9 @@ async function findWebsiteForLead(opts) {
             const body = typeof res.data === 'string' ? res.data : '';
             const finalUrl = res.request?.res?.responseUrl || tryUrl;
             if (res.status === 200 && /text\/html/i.test(ct) && !looksLikeParking(body)) {
-                return { website: String(finalUrl), website_status: 'found', website_checked_at: checkedAt };
+                if (htmlSupportsCompanyIdentity(body, companyName, postcode)) {
+                    return { website: String(finalUrl), website_status: 'found', website_checked_at: checkedAt };
+                }
             }
             if (looksLikeParking(body)) {
                 return { website: String(finalUrl), website_status: 'parked', website_checked_at: checkedAt };
@@ -156,4 +229,6 @@ module.exports = {
     fetchHtmlCheck,
     looksLikeParking,
     domainCandidates,
+    significantCompanyWords,
+    htmlSupportsCompanyIdentity,
 };

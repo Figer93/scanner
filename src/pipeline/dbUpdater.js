@@ -38,11 +38,13 @@ async function upsertCompanyContacts(db, leadId, contacts) {
     for (const c of contacts) {
         if (!c.value || !c.type) continue;
         try {
+            const validBool = c.valid === true ? true : c.valid === false ? false : null;
+            const validatedAt = validBool === true ? new Date().toISOString() : null;
             await db.run(
                 `INSERT INTO company_contacts (lead_id, type, value, source, valid, validated_at)
-                 VALUES ($1, $2, $3, $4, $5, CASE WHEN $5 IS NOT NULL THEN CURRENT_TIMESTAMP ELSE NULL END)
+                 VALUES ($1, $2, $3, $4, $5::boolean, $6::timestamptz)
                  ON CONFLICT (lead_id, type, value) DO NOTHING`,
-                [leadId, c.type, c.value, c.source, c.valid ?? null]
+                [leadId, c.type, c.value, c.source, validBool, validatedAt]
             );
         } catch (err) {
             logger.warn({ err: err.message, leadId }, 'company_contacts upsert failed');
