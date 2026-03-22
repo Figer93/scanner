@@ -109,7 +109,7 @@ async function runPipeline({ limit, inputFile, source: sourceOpt, googleMapsKeyw
             }
         } else if (source === SOURCE_GOOGLE_MAPS || source === 'google_maps') {
             if (!apiKeys.google_places_api_key || !apiKeys.google_places_api_key.trim()) {
-                throw new Error('Google Places API key is required. Set GOOGLE_PLACES_API_KEY in .env or in Profile.');
+                throw new Error('Google Places API key is required. Set GOOGLE_PLACES_API_KEY in Railway or .env.');
             }
             const keyword = googleMapsKeyword || process.env.GOOGLE_MAPS_KEYWORD || 'business';
             const location = googleMapsLocation || process.env.GOOGLE_MAPS_LOCATION || 'London';
@@ -156,7 +156,7 @@ async function runPipeline({ limit, inputFile, source: sourceOpt, googleMapsKeyw
                 throw new Error('LinkedIn source requires company names (comma or newline separated).');
             }
             if (!apiKeys.apify_api_token || !apiKeys.apify_api_token.trim()) {
-                throw new Error('Apify API token is required for LinkedIn. Set APIFY_API_TOKEN in .env or in Profile.');
+                throw new Error('Apify API token is required for LinkedIn. Set APIFY_API_TOKEN in Railway or .env.');
             }
             onProgress('Fetching from LinkedIn via Apify…');
             companies = await fetchLinkedInCompanies({

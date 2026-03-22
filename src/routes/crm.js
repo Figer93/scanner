@@ -2,7 +2,7 @@
  * /api/leads/:id/push-crm, /api/crm/push-bulk — CRM push (HubSpot, Pipedrive, Salesforce)
  */
 
-const { getDb, getLeadById, getProfile, addLeadActivity } = require('../services/database');
+const { getDb, getLeadById, addLeadActivity } = require('../services/database');
 const { pushLeadToCrm } = require('../services/crmPush');
 const logger = require('../lib/logger');
 
@@ -18,13 +18,12 @@ function mountCrm(app) {
             const db = await getDb();
             const lead = await getLeadById(db, id);
             if (!lead) return res.status(404).json({ error: 'Lead not found' });
-            const profile = await getProfile(db);
             const credentials = {
-                hubspot_api_key: profile.hubspot_api_key || process.env.HUBSPOT_API_KEY || '',
-                pipedrive_api_token: profile.pipedrive_api_token || process.env.PIPEDRIVE_API_TOKEN || '',
-                pipedrive_domain: profile.pipedrive_domain || process.env.PIPEDRIVE_DOMAIN || '',
-                salesforce_access_token: profile.salesforce_access_token || process.env.SALESFORCE_ACCESS_TOKEN || '',
-                salesforce_instance_url: profile.salesforce_instance_url || process.env.SALESFORCE_INSTANCE_URL || ''
+                hubspot_api_key: process.env.HUBSPOT_API_KEY || '',
+                pipedrive_api_token: process.env.PIPEDRIVE_API_TOKEN || '',
+                pipedrive_domain: process.env.PIPEDRIVE_DOMAIN || '',
+                salesforce_access_token: process.env.SALESFORCE_ACCESS_TOKEN || '',
+                salesforce_instance_url: process.env.SALESFORCE_INSTANCE_URL || ''
             };
             const result = await pushLeadToCrm(provider, lead, credentials);
             if (!result.ok) {
@@ -47,13 +46,12 @@ function mountCrm(app) {
         if (!leadIds.length) return res.status(400).json({ error: 'Provide leadIds array.' });
         try {
             const db = await getDb();
-            const profile = await getProfile(db);
             const credentials = {
-                hubspot_api_key: profile.hubspot_api_key || process.env.HUBSPOT_API_KEY || '',
-                pipedrive_api_token: profile.pipedrive_api_token || process.env.PIPEDRIVE_API_TOKEN || '',
-                pipedrive_domain: profile.pipedrive_domain || process.env.PIPEDRIVE_DOMAIN || '',
-                salesforce_access_token: profile.salesforce_access_token || process.env.SALESFORCE_ACCESS_TOKEN || '',
-                salesforce_instance_url: profile.salesforce_instance_url || process.env.SALESFORCE_INSTANCE_URL || ''
+                hubspot_api_key: process.env.HUBSPOT_API_KEY || '',
+                pipedrive_api_token: process.env.PIPEDRIVE_API_TOKEN || '',
+                pipedrive_domain: process.env.PIPEDRIVE_DOMAIN || '',
+                salesforce_access_token: process.env.SALESFORCE_ACCESS_TOKEN || '',
+                salesforce_instance_url: process.env.SALESFORCE_INSTANCE_URL || ''
             };
             const results = { pushed: 0, failed: 0, errors: [] };
             for (const lid of leadIds) {

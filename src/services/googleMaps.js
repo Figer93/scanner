@@ -26,7 +26,7 @@ function extractUkPostcode(address) {
  */
 async function searchPlaces({ apiKey, keyword, location, limit = 20 }) {
     if (!apiKey || !apiKey.trim()) {
-        throw new Error('Google Maps/Places API key is required. Set GOOGLE_PLACES_API_KEY in .env or in Profile.');
+        throw new Error('Google Maps/Places API key is required. Set GOOGLE_PLACES_API_KEY in Railway or .env.');
     }
     const query = [keyword, location].filter(Boolean).join(' in ');
     if (!query.trim()) {

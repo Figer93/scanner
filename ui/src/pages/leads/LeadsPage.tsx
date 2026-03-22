@@ -300,7 +300,7 @@ export default function LeadsPage() {
                                 description={
                                     viewMode === 'enriched'
                                         ? 'Enriched leads have at least one contact (email, phone, or website). Add companies from Discovery and enrich them, or run enrichment on a list.'
-                                        : 'Sync Companies House from Profile or run the sync script to populate the cache.'
+                                        : 'Run CH cache sync (or set COMPANIES_HOUSE_API_KEY and sync) to populate the cache.'
                                 }
                             />
                         )}

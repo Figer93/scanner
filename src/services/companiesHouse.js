@@ -9,11 +9,10 @@ const CH_BASE = 'https://api.company-information.service.gov.uk';
 const DEFAULT_DAYS_BACK = parseInt(process.env.CH_DAYS_BACK, 10) || 30;
 
 /**
- * Prefer COMPANIES_HOUSE_API_KEY (Railway / .env) over Profile so a stale DB key does not override deployment.
- * @param {Record<string, string> | null | undefined} profile
+ * Companies House API key from COMPANIES_HOUSE_API_KEY only (set in Railway / .env).
  * @returns {string}
  */
-function resolveCompaniesHouseApiKey(profile) {
+function resolveCompaniesHouseApiKey() {
     const strip = (s) => {
         if (s == null || s === '') return '';
         let x = String(s).trim();
@@ -22,12 +21,7 @@ function resolveCompaniesHouseApiKey(profile) {
         }
         return x;
     };
-    const fromEnv = strip(process.env.COMPANIES_HOUSE_API_KEY);
-    const fromProf =
-        profile && typeof profile === 'object' && profile.companies_house_api_key != null
-            ? strip(profile.companies_house_api_key)
-            : '';
-    return fromEnv || fromProf;
+    return strip(process.env.COMPANIES_HOUSE_API_KEY);
 }
 
 /**
@@ -53,9 +47,9 @@ function toDateString(d) {
  * @returns {Promise<Array<{ name: string, number: string, address: string, postcode: string }>>}
  */
 async function fetchCompanies(options = {}) {
-    const apiKey = options.apiKey || resolveCompaniesHouseApiKey({});
+    const apiKey = options.apiKey || resolveCompaniesHouseApiKey();
     if (!apiKey || !apiKey.trim()) {
-        throw new Error('Companies House API key is required. Set COMPANIES_HOUSE_API_KEY in .env or in Profile.');
+        throw new Error('Companies House API key is required. Set COMPANIES_HOUSE_API_KEY in Railway or .env.');
     }
 
     const daysBack = options.daysBack ?? DEFAULT_DAYS_BACK;

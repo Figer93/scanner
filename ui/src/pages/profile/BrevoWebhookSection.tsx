@@ -65,7 +65,7 @@ export default function BrevoWebhookSection() {
             <p className="text-xs text-white/60 mb-4">
                 Use the URLs below in Brevo. Set{' '}
                 <code className="text-white/50 bg-white/10 px-1 rounded">BREVO_WEBHOOK_SECRET</code>{' '}
-                in .env or in Profile so the endpoint accepts requests (e.g. add <code className="text-white/50 bg-white/10 px-1 rounded">?secret=your_secret</code> to the URL in Brevo if needed).
+                in Railway or .env so the endpoint accepts requests (e.g. add <code className="text-white/50 bg-white/10 px-1 rounded">?secret=your_secret</code> to the URL in Brevo if needed).
             </p>
 
             <div className="space-y-3 mb-4">

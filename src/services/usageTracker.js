@@ -2,19 +2,18 @@
  * Records per-call API usage to usage_log and provides aggregated stats for the Profile dashboard.
  */
 
-const { getProfile } = require('./database');
 const { resolveCompaniesHouseApiKey } = require('./companiesHouse');
 
-async function getResolvedKeys(db) {
-    const profile = await getProfile(db);
+/** Integration secrets: environment variables only (Railway / .env), not profile DB. `db` is ignored (callers pass it for API consistency). */
+async function getResolvedKeys(_db) {
     return {
-        serper_api_key: profile.serper_api_key || process.env.SERPER_API_KEY || '',
-        companies_house_api_key: resolveCompaniesHouseApiKey(profile),
-        google_places_api_key: profile.google_places_api_key || process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '',
-        google_ai_api_key: profile.google_ai_api_key || process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || '',
-        charity_commission_api_key: profile.charity_commission_api_key || process.env.CHARITY_COMMISSION_API_KEY || '',
-        apify_api_token: profile.apify_api_token || process.env.APIFY_API_TOKEN || '',
-        apify_linkedin_actor_id: profile.apify_linkedin_actor_id || process.env.APIFY_LINKEDIN_ACTOR_ID || ''
+        serper_api_key: (process.env.SERPER_API_KEY || '').trim(),
+        companies_house_api_key: resolveCompaniesHouseApiKey(),
+        google_places_api_key: (process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim(),
+        google_ai_api_key: (process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || '').trim(),
+        charity_commission_api_key: (process.env.CHARITY_COMMISSION_API_KEY || '').trim(),
+        apify_api_token: (process.env.APIFY_API_TOKEN || '').trim(),
+        apify_linkedin_actor_id: (process.env.APIFY_LINKEDIN_ACTOR_ID || '').trim()
     };
 }
 

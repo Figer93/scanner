@@ -9,12 +9,12 @@ const logger = require('../lib/logger');
 const { getProfile, getDb } = require('./database');
 
 function getMailgunConfigFromProfile(profile) {
-    const apiKey = (profile.mailgun_api_key || process.env.MAILGUN_API_KEY || '').trim();
-    const domain = (profile.mailgun_domain || process.env.MAILGUN_DOMAIN || '').trim();
-    const region = (profile.mailgun_region || process.env.MAILGUN_REGION || 'us').trim().toLowerCase();
+    const apiKey = (process.env.MAILGUN_API_KEY || '').trim();
+    const domain = (process.env.MAILGUN_DOMAIN || '').trim();
+    const region = (process.env.MAILGUN_REGION || 'us').trim().toLowerCase();
     const fromEmail = (profile.sender_email || process.env.MAILGUN_SENDER_EMAIL || process.env.BREVO_SENDER_EMAIL || '').trim();
     const fromName = (profile.sender_name || process.env.MAILGUN_SENDER_NAME || process.env.BREVO_SENDER_NAME || 'Foundly Start').trim();
-    const replyTo = (profile.mailgun_reply_to || process.env.MAILGUN_REPLY_TO || '').trim();
+    const replyTo = (process.env.MAILGUN_REPLY_TO || '').trim();
 
     const baseUrl = region === 'eu'
         ? 'https://api.eu.mailgun.net/v3'

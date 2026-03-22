@@ -84,7 +84,7 @@ function formatAiError(err) {
 async function callGemini(params, opts) {
     const apiKey = (opts.googleAiApiKey || process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY || '').trim();
     if (!apiKey) {
-        return { error: 'Google AI API key not set. Add it in Profile.', code: 'NO_KEY' };
+        return { error: 'Google AI API key not set. Set GOOGLE_AI_API_KEY or GEMINI_API_KEY in Railway or .env.', code: 'NO_KEY' };
     }
 
     const model = opts.modelOverride || GEMINI_MODEL;

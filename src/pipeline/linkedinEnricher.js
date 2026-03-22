@@ -64,7 +64,7 @@ async function enrichLinkedIn(opts) {
     if (!meta || typeof meta !== 'object') meta = {};
 
     let officers = Array.isArray(meta.officers) ? meta.officers : [];
-    const chKey = apiKeys.companies_house || resolveCompaniesHouseApiKey({});
+    const chKey = apiKeys.companies_house || resolveCompaniesHouseApiKey();
     if (officers.length === 0 && chKey && lead.company_number) {
         try {
             officers = await getOfficers(chKey, lead.company_number);

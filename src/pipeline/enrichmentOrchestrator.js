@@ -70,10 +70,10 @@ async function runEnrichmentForLead(ctx) {
     }
 
     try {
-    const serperKey = (profile.serper_api_key || process.env.SERPER_API_KEY || '').trim();
-    const apifyKey = (profile.apify_api_token || process.env.APIFY_API_TOKEN || '').trim();
-    const actorId = (profile.apify_linkedin_actor_id || process.env.APIFY_LINKEDIN_ACTOR_ID || '').trim();
-    const chKey = resolveCompaniesHouseApiKey(profile);
+    const serperKey = (process.env.SERPER_API_KEY || '').trim();
+    const apifyKey = (process.env.APIFY_API_TOKEN || '').trim();
+    const actorId = (process.env.APIFY_LINKEDIN_ACTOR_ID || '').trim();
+    const chKey = resolveCompaniesHouseApiKey();
     const apifyLinkedinEnabled = profile.apify_linkedin_enabled === 'true' || profile.apify_linkedin_enabled === '1';
 
     let website = lead.website || null;

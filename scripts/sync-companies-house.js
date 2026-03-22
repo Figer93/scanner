@@ -34,7 +34,7 @@ async function main() {
     const apiKey = apiKeys.companies_house_api_key || '';
 
     if (!apiKey || !apiKey.trim()) {
-        console.error('Companies House API key is required. Set COMPANIES_HOUSE_API_KEY in .env or in Profile (via UI).');
+        console.error('Companies House API key is required. Set COMPANIES_HOUSE_API_KEY in Railway or .env.');
         process.exit(1);
     }
 

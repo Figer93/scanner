@@ -16,7 +16,7 @@ function mountCompaniesHouse(app) {
             const apiKeys = await getResolvedKeys(db);
             const apiKey = apiKeys.companies_house_api_key || '';
             if (!apiKey || !apiKey.trim()) {
-                return res.status(400).json({ error: 'Companies House API key is required. Set in Profile or COMPANIES_HOUSE_API_KEY in .env.' });
+                return res.status(400).json({ error: 'Companies House API key is required. Set COMPANIES_HOUSE_API_KEY in Railway or .env.' });
             }
             const company = await getCompanyByNumber(apiKey, number);
             if (!company) return res.status(404).json({ error: 'Company not found' });

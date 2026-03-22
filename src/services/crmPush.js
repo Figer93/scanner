@@ -1,6 +1,6 @@
 /**
  * Push leads to CRM: HubSpot, Pipedrive, Salesforce.
- * Uses API keys / tokens from profile.
+ * Uses API keys / tokens from environment variables (Railway / .env).
  */
 
 const axios = require('axios');
@@ -13,7 +13,7 @@ const axios = require('axios');
  */
 async function pushToHubSpot(lead, apiKey) {
     const token = (apiKey || '').trim();
-    if (!token) return { ok: false, error: 'HubSpot API key not set. Add in Profile.' };
+    if (!token) return { ok: false, error: 'HubSpot API key not set. Set HUBSPOT_API_KEY in Railway or .env.' };
     const base = 'https://api.hubapi.com';
     try {
         const companyRes = await axios.post(
@@ -73,8 +73,8 @@ async function pushToHubSpot(lead, apiKey) {
 async function pushToPipedrive(lead, apiToken, domain) {
     const token = (apiToken || '').trim();
     const dom = (domain || '').trim().replace(/\.pipedrive\.com$/i, '');
-    if (!token) return { ok: false, error: 'Pipedrive API token not set. Add in Profile.' };
-    if (!dom) return { ok: false, error: 'Pipedrive domain not set (e.g. mycompany). Add in Profile.' };
+    if (!token) return { ok: false, error: 'Pipedrive API token not set. Set PIPEDRIVE_API_TOKEN in Railway or .env.' };
+    if (!dom) return { ok: false, error: 'Pipedrive domain not set. Set PIPEDRIVE_DOMAIN (e.g. mycompany) in Railway or .env.' };
     const base = `https://${dom}.pipedrive.com/api/v1`;
     // NOTE: Token is sent in Authorization header, not URL query param, to avoid it appearing in server logs.
     const pipedriveHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
@@ -122,8 +122,8 @@ async function pushToPipedrive(lead, apiToken, domain) {
 async function pushToSalesforce(lead, accessToken, instanceUrl) {
     const token = (accessToken || '').trim();
     const instance = (instanceUrl || '').trim().replace(/\/$/, '');
-    if (!token) return { ok: false, error: 'Salesforce access token not set. Add in Profile.' };
-    if (!instance) return { ok: false, error: 'Salesforce instance URL not set. Add in Profile.' };
+    if (!token) return { ok: false, error: 'Salesforce access token not set. Set SALESFORCE_ACCESS_TOKEN in Railway or .env.' };
+    if (!instance) return { ok: false, error: 'Salesforce instance URL not set. Set SALESFORCE_INSTANCE_URL in Railway or .env.' };
     try {
         const accountRes = await axios.post(
             `${instance}/services/data/v59.0/sobjects/Account`,
@@ -175,7 +175,7 @@ async function pushToSalesforce(lead, accessToken, instanceUrl) {
  * Push one lead to the given CRM provider.
  * @param {string} provider - 'hubspot' | 'pipedrive' | 'salesforce'
  * @param {object} lead
- * @param {object} credentials - From profile: hubspot_api_key, pipedrive_api_token, pipedrive_domain, salesforce_access_token, salesforce_instance_url
+ * @param {object} credentials - From env: hubspot_api_key, pipedrive_api_token, pipedrive_domain, salesforce_access_token, salesforce_instance_url
  */
 async function pushLeadToCrm(provider, lead, credentials) {
     const p = (provider || '').toLowerCase();

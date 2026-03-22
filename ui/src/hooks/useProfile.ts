@@ -1,5 +1,5 @@
 /**
- * React Query hooks for profile data (API keys, settings, usage).
+ * React Query hooks for profile data (settings stored in DB; secrets use env only).
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -7,22 +7,30 @@ import api from '../api/client';
 
 // ── Types ────────────────────────────────────────────────────
 
+/** GET /api/profile — non-secret keys plus optional *_source fields. */
 export interface ProfileData {
-    serper_api_key: string;
-    serper_api_key_source: string;
-    companies_house_api_key: string;
-    companies_house_api_key_source: string;
-    google_ai_api_key: string;
-    google_ai_api_key_source: string;
-    webhook_url: string;
-    webhook_score_threshold: string;
-    team_members: string;
-    team_members_source: string;
-    lead_scoring_criteria: string;
+    webhook_url?: string;
+    webhook_score_threshold?: string;
+    team_members?: string;
+    lead_scoring_criteria?: string;
     last_pipeline_run?: string;
+    referral_link?: string;
+    sender_name?: string;
+    sender_email?: string;
+    daily_send_limit?: number;
+    send_delay_minutes?: number;
+    queue_paused?: boolean;
+    delay_between_companies_ms?: number;
+    enrichment_concurrency?: number;
+    enrichment_stage_website_find?: boolean;
+    enrichment_stage_scrape?: boolean;
+    enrichment_stage_linkedin?: boolean;
+    enrichment_stage_validate?: boolean;
+    apify_linkedin_enabled?: boolean;
     /** Estimated earnings on dashboard; edited in Profile → Estimated earnings. */
     earnings_referral_pounds?: number | null;
     earnings_conversion_rate_pct?: number;
+    [key: string]: string | number | boolean | undefined | null;
 }
 
 export interface UsageStat {
@@ -50,7 +58,7 @@ export const profileKeys = {
 
 // ── Hooks ────────────────────────────────────────────────────
 
-/** Fetch masked profile settings (API keys shown as ***xxxx). */
+/** Fetch profile settings (non-secret fields from DB + env fallbacks where applicable). */
 export function useProfile() {
     return useQuery<ProfileData>({
         queryKey: profileKeys.data(),
@@ -79,7 +87,7 @@ export function useSchedule() {
 
 // ── Mutations ────────────────────────────────────────────────
 
-/** Save profile settings (API keys, criteria, webhook config, etc.). */
+/** Save profile settings (criteria, webhook, pipeline toggles, outreach, etc.). */
 export function useSaveProfile() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -90,7 +98,7 @@ export function useSaveProfile() {
     });
 }
 
-/** Delete a single profile key (revert to .env fallback). */
+/** Delete a single profile key (clears DB value for that setting). */
 export function useDeleteProfileKey() {
     const queryClient = useQueryClient();
     return useMutation({

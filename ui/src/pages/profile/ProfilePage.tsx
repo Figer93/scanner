@@ -90,7 +90,7 @@ export default function ProfilePage({ logs = [], onClearLogs }: ProfilePageProps
                     Profile
                 </h1>
                 <p className="text-sm text-white/70 mt-1">
-                    API keys and settings. Values saved here are stored in the database and override .env. No restart needed.
+                    Pipeline and outreach settings are stored here. API keys are set in Railway (environment variables), not in Profile.
                 </p>
             </div>
 
@@ -107,7 +107,7 @@ export default function ProfilePage({ logs = [], onClearLogs }: ProfilePageProps
                 </div>
             )}
 
-            <ApiKeysSection profile={profile} onMessage={handleMessage} />
+            <ApiKeysSection />
             <EarningsSection onMessage={handleMessage} />
             <MailgunWebhookSection />
             <OutreachSection profile={profile} onMessage={handleMessage} />

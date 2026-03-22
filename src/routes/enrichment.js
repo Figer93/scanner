@@ -130,10 +130,10 @@ function mountEnrichment(app, context = {}) {
             const db = db0;
             initSchema(db);
             const profile = await getProfile(db);
-            const chKey = resolveCompaniesHouseApiKey(profile);
+            const chKey = resolveCompaniesHouseApiKey();
             if (!chKey) {
                 return res.status(400).json({
-                    error: 'Companies House API key required. Set COMPANIES_HOUSE_API_KEY or Profile companies_house_api_key (env wins when set).',
+                    error: 'Companies House API key required. Set COMPANIES_HOUSE_API_KEY in Railway or .env.',
                 });
             }
 

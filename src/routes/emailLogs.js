@@ -194,22 +194,19 @@ async function getEmailLogByBrevoMessageIdFlexible(db, messageId) {
     return log || null;
 }
 
-/** Resolve expected Brevo webhook secret: profile (DB) overrides .env */
-async function getExpectedBrevoSecret(db) {
-    const profile = await getProfile(db);
-    return (profile.brevo_webhook_secret || process.env.BREVO_WEBHOOK_SECRET || '').toString().trim();
+/** Brevo webhook verification secret from BREVO_WEBHOOK_SECRET only (Railway / .env). */
+function getExpectedBrevoSecret() {
+    return (process.env.BREVO_WEBHOOK_SECRET || '').toString().trim();
 }
 
 /**
  * Verifies Brevo webhook requests using a shared secret.
- * BREVO_WEBHOOK_SECRET (or profile brevo_webhook_secret) is required; requests without a valid secret return 403.
+ * BREVO_WEBHOOK_SECRET is required; requests without a valid secret return 403.
  * Secret may be provided via query ?secret= or header x-webhook-secret.
  */
 async function verifyBrevoWebhook(req, res, next) {
     try {
-        const db = await getDb();
-        initSchema(db);
-        const expectedSecret = await getExpectedBrevoSecret(db);
+        const expectedSecret = getExpectedBrevoSecret();
         if (!expectedSecret) {
             logger.warn({ path: req.path }, 'Brevo webhook rejected — BREVO_WEBHOOK_SECRET not set');
             return res.status(403).json({ error: 'Forbidden' });
@@ -639,8 +636,7 @@ function mountEmailLogs(app) {
         try {
             const db = await getDb();
             initSchema(db);
-            const profile = await getProfile(db);
-            const secret = (profile.brevo_webhook_secret || process.env.BREVO_WEBHOOK_SECRET || '').toString().trim();
+            const secret = getExpectedBrevoSecret();
             const lastAt = profile.brevo_last_webhook_at || null;
             const count = parseInt(profile.brevo_webhook_count, 10) || 0;
             res.json({
