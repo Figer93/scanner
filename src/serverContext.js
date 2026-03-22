@@ -14,6 +14,9 @@ const LOG_FILE_PATH = path.join(LOG_FILE_DIR, 'app.log');
 
 let _io = null;
 
+/** True while a deep enrichment job worker pool is running (mutex with legacy bulk-enrich). */
+let _deepEnrichmentRunning = false;
+
 const backgroundJob = {
     running: false,
     job: null,
@@ -24,6 +27,18 @@ const backgroundJob = {
 
 function initServerContext(io) {
     _io = io;
+}
+
+function getIo() {
+    return _io;
+}
+
+function setDeepEnrichmentRunning(v) {
+    _deepEnrichmentRunning = !!v;
+}
+
+function isDeepEnrichmentRunning() {
+    return _deepEnrichmentRunning;
 }
 
 function persistAndEmitLog(message) {
@@ -62,6 +77,9 @@ module.exports = {
     logBuffer,
     backgroundJob,
     initServerContext,
+    getIo,
+    setDeepEnrichmentRunning,
+    isDeepEnrichmentRunning,
     persistAndEmitLog,
     fireWebhookIfConfigured
 };

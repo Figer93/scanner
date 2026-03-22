@@ -18,7 +18,13 @@ export const endpoints = {
     listById: (id) => `/api/lists/${id}`,
     listLeads: (id) => `/api/lists/${id}/leads`,
     run: () => '/api/run',
-    schedule: () => '/api/schedule'
+    schedule: () => '/api/schedule',
+    enrichmentStats: () => '/api/enrichment/stats',
+    enrichmentJobs: () => '/api/enrichment/jobs',
+    enrichmentJob: (id) => `/api/enrichment/jobs/${id}`,
+    enrichmentJobLeads: (id) => `/api/enrichment/jobs/${id}/leads`,
+    enrichmentLeadLog: (leadId) => `/api/enrichment/leads/${leadId}/log`,
+    enrichmentRetry: () => '/api/enrichment/retry',
 };
 
 export default endpoints;

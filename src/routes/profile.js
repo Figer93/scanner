@@ -11,6 +11,9 @@ const logger = require('../lib/logger');
 const { sendAudit } = require('../services/auditWebhook');
 
 const PROFILE_KEYS = [
+    'delay_between_companies_ms', 'enrichment_concurrency',
+    'enrichment_stage_website_find', 'enrichment_stage_scrape', 'enrichment_stage_linkedin', 'enrichment_stage_validate',
+    'apify_linkedin_enabled',
     'serper_api_key', 'companies_house_api_key', 'google_places_api_key',
     'google_ai_api_key', 'apify_api_token', 'apify_linkedin_actor_id',
     'hubspot_api_key', 'pipedrive_api_token', 'pipedrive_domain',
@@ -45,6 +48,13 @@ const ENV_KEY_MAP = {
 
 // POST /api/profile — accepts any combination of known profile keys
 const profileUpdateSchema = z.object({
+    delay_between_companies_ms: z.union([z.string(), z.number()]).optional(),
+    enrichment_concurrency: z.coerce.number().int().min(1).max(20).optional(),
+    enrichment_stage_website_find: z.boolean().optional(),
+    enrichment_stage_scrape: z.boolean().optional(),
+    enrichment_stage_linkedin: z.boolean().optional(),
+    enrichment_stage_validate: z.boolean().optional(),
+    apify_linkedin_enabled: z.boolean().optional(),
     serper_api_key: z.string().optional(),
     companies_house_api_key: z.string().optional(),
     google_places_api_key: z.string().optional(),
@@ -104,6 +114,29 @@ function mountProfile(app) {
                     masked[k + '_source'] = profile[k] != null && String(profile[k]).length > 0 ? 'db' : '';
                     return;
                 }
+                if (
+                    k === 'enrichment_stage_website_find' ||
+                    k === 'enrichment_stage_scrape' ||
+                    k === 'enrichment_stage_linkedin' ||
+                    k === 'enrichment_stage_validate' ||
+                    k === 'apify_linkedin_enabled'
+                ) {
+                    masked[k] = profile[k] === '1' || profile[k] === 'true';
+                    masked[k + '_source'] = profile[k] != null && String(profile[k]).length > 0 ? 'db' : '';
+                    return;
+                }
+                if (k === 'delay_between_companies_ms') {
+                    const raw = profile[k] != null && String(profile[k]).trim() !== '' ? profile[k] : '500';
+                    masked[k] = parseInt(raw, 10) || 500;
+                    masked[k + '_source'] = profile[k] != null && String(profile[k]).length > 0 ? 'db' : '';
+                    return;
+                }
+                if (k === 'enrichment_concurrency') {
+                    const raw = profile[k] != null && String(profile[k]).trim() !== '' ? profile[k] : '10';
+                    masked[k] = Math.min(20, Math.max(1, parseInt(raw, 10) || 10));
+                    masked[k + '_source'] = profile[k] != null && String(profile[k]).length > 0 ? 'db' : '';
+                    return;
+                }
                 if (k === 'earnings_referral_pounds' || k === 'earnings_conversion_rate_pct') {
                     const raw = profile[k];
                     const num = raw != null && String(raw).trim() !== '' ? parseFloat(raw) : (k === 'earnings_conversion_rate_pct' ? 15 : null);
@@ -138,6 +171,22 @@ function mountProfile(app) {
             const body = req.body || {};
             for (const k of PROFILE_KEYS) {
                 if (body[k] === undefined) continue;
+                if (
+                    k === 'enrichment_stage_website_find' ||
+                    k === 'enrichment_stage_scrape' ||
+                    k === 'enrichment_stage_linkedin' ||
+                    k === 'enrichment_stage_validate' ||
+                    k === 'apify_linkedin_enabled'
+                ) {
+                    await setProfileKey(db, k, body[k] ? '1' : '0');
+                    continue;
+                }
+                if (k === 'delay_between_companies_ms' || k === 'enrichment_concurrency') {
+                    const n = typeof body[k] === 'number' ? body[k] : parseInt(body[k], 10);
+                    const def = k === 'delay_between_companies_ms' ? 500 : 10;
+                    await setProfileKey(db, k, Number.isNaN(n) ? String(def) : String(n));
+                    continue;
+                }
                 if (k === 'daily_send_limit' || k === 'send_delay_minutes') {
                     const n = typeof body[k] === 'number' ? body[k] : parseInt(body[k], 10);
                     await setProfileKey(db, k, Number.isNaN(n) ? (k === 'daily_send_limit' ? '50' : '3') : String(n));

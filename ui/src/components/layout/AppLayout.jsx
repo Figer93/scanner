@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { id: 'home', hash: '#/', label: 'Dashboard', icon: '◉' },
   { id: 'leads', hash: '#/leads', label: 'Find Leads', icon: '🔍', ariaDescription: 'Enriched leads and discovery' },
   { id: 'outreach', hash: '#/outreach', label: 'Outreach', icon: '✉' },
+  { id: 'pipeline', hash: '#/pipeline', label: 'Pipeline', icon: '⎘' },
   { id: 'db', hash: '#/db', label: 'DB Management', icon: '🗄' },
   { id: 'profile', hash: '#/profile', label: 'Profile', icon: '⚙' },
 ];

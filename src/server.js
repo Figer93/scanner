@@ -165,7 +165,7 @@ app.use(
     })
 );
 
-mountAll(app, { startScheduledRuns });
+mountAll(app, { startScheduledRuns, io });
 
 // SPA fallback: serve index.html only for non-API, non-asset routes (avoids sending HTML for /assets/* when files are missing)
 app.get(/^(?!\/api)(?!\/assets)/, (req, res) => {

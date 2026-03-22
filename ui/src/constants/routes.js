@@ -7,6 +7,7 @@ export const ROUTES = {
     LEADS: '#/leads',
     OUTREACH: '#/outreach',
     DB: '#/db',
+    PIPELINE: '#/pipeline',
     PROFILE: '#/profile',
 };
 
@@ -35,6 +36,7 @@ export function getPageFromHash(hash) {
         return { page: 'outreach', leadId: null, companyNumber: null, conversationLeadId };
     }
     if (h.startsWith('#/db')) return { page: 'db', leadId: null, companyNumber: null, conversationLeadId: null };
+    if (h.startsWith('#/pipeline')) return { page: 'pipeline', leadId: null, companyNumber: null, conversationLeadId: null };
     if (h.startsWith('#/profile')) return { page: 'profile', leadId: null, companyNumber: null, conversationLeadId: null };
     // Legacy bookmarks (removed nav items)
     if (h.includes('kanban')) return { page: 'leads', leadId: null, companyNumber: null, conversationLeadId: null };

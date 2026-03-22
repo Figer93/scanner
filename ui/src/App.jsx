@@ -6,6 +6,7 @@ import LeadProfilePage from './pages/LeadProfilePage';
 import CompanyDetailPage from './pages/company/CompanyDetailPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import DBManagement from './pages/DBManagement';
+import PipelinePage from './pages/PipelinePage';
 import AppLayout from './components/layout/AppLayout';
 import { api } from './api/client';
 import { endpoints } from './api/endpoints';
@@ -152,6 +153,7 @@ function AppInner() {
     : page === 'profile' ? 'profile'
     : page === 'outreach' ? 'outreach'
     : page === 'db' ? 'db'
+    : page === 'pipeline' ? 'pipeline'
     : 'home';
 
   return (
@@ -174,6 +176,7 @@ function AppInner() {
         </Suspense>
       )}
       {page === 'db' && <DBManagement />}
+      {page === 'pipeline' && <PipelinePage />}
     </AppLayout>
   );
 }
