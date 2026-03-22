@@ -1,6 +1,6 @@
 # Foundly Start
 
-**Automated UK business lead enrichment and outreach.** Load companies from Companies House / Google Maps / LinkedIn → find websites (Serper) → scrape contacts (Playwright) → score + draft outreach (Google AI) → store in **Supabase Postgres**. Deployed on **Railway**.
+**Automated UK business lead enrichment and outreach.** Load companies from Companies House, Google Maps, or file-based sources → find websites (Serper) → scrape contacts (Playwright) → score + draft outreach (Google AI) → store in **PostgreSQL** (e.g. Supabase). Designed to deploy on **Railway** with the React UI served from the same Node process.
 
 **Target users:** Web agencies, SEO/marketing firms, and SaaS providers targeting newly registered UK companies.
 
@@ -9,254 +9,257 @@
 ## Table of contents
 
 - [Features](#features)
-- [Railway deployment (primary)](#railway-deployment-primary)
+- [Web application](#web-application)
+- [Railway deployment](#railway-deployment)
+- [Environment variables](#environment-variables)
+- [Profile page vs `.env`](#profile-page-vs-env)
+- [Mailgun (send, inbound replies, open/click tracking)](#mailgun-send-inbound-replies-openclick-tracking)
+- [Main domain vs dashboard](#main-domain-vs-dashboard)
+- [Outreach milestones](#outreach-milestones)
 - [Tech stack](#tech-stack)
 - [Project structure](#project-structure)
-- [Local development (optional)](#local-development-optional)
-- [Database schema](#database-schema)
-- [Profile & API key management](#profile--api-key-management)
-- [Companies House integration](#companies-house-integration)
-- [Google Maps (Places) source](#google-maps-places-source)
-- [Lead scoring & outreach draft](#lead-scoring--outreach-draft)
-- [LinkedIn source (Apify)](#linkedin-source-apify)
+- [Local development](#local-development)
+- [Database](#database)
+- [Lead sources & integrations](#lead-sources--integrations)
 - [CRM push](#crm-push)
-- [Team members & assign lead](#team-members--assign-lead)
-- [Cost per lead](#cost-per-lead)
-- [License & support](#license--support)
+- [Team members & assignment](#team-members--assignment)
+- [Cost and estimated earnings](#cost-and-estimated-earnings)
+- [Troubleshooting](#troubleshooting)
+- [Resilience & logging](#resilience--logging)
+- [License](#license)
 
 ---
 
 ## Features
 
-- **Lead sources:** JSON file, Companies House API (new incorporations), Google Maps (Places) by keyword + location, LinkedIn via Apify.
+- **Lead sources:** JSON file, Companies House API (new incorporations), Google Maps (Places) by keyword + location, LinkedIn via Apify (CLI/pipeline).
 - **Enrichment:** Serper for website discovery → Playwright for contact scraping (emails, phones, contact form) → optional AI ice-breaker (Gemini).
-- **Lead scoring:** 1–10 score and outreach draft per lead via Google AI Studio (Gemini); criteria configurable in Profile.
-- **Web UI:** Find leads (search CH cache, save to lists), Kanban (status drag-and-drop), Lead profile (score, draft, sync, enrich, push to CRM), Profile (API keys, usage, schedule, cost per lead), Analytics, Outreach (templates, sent history), DB Management (bulk enrich, clean invalid emails).
-- **CRM:** Push to HubSpot, Pipedrive, or Salesforce (per lead or bulk).
-- **Export:** CSV and Excel; optional single-file HTML export for archiving.
-- **Scheduled runs:** Cron-based pipeline runs; webhook for high-score or status events.
+- **Lead scoring:** 1–10 score and breakdown per lead via Google AI; criteria configurable in Profile.
+- **Web UI:** Dashboard (pipeline summary, activity), **Find Leads** (search CH cache, enriched leads, lists, company detail), **Outreach** (conversations, templates, signature, sequences), **DB Management**, **Profile** (keys, Mailgun/Brevo helpers, outreach, pipeline run + logs, schedule, usage, estimated earnings).
+- **CRM:** Push to HubSpot, Pipedrive, or Salesforce from the **company** view when credentials are configured (see [CRM push](#crm-push)).
+- **Export:** CSV and Excel from Find Leads; optional single-file HTML export (`npm run export:html`).
+- **Scheduled runs:** Cron-based pipeline runs; optional audit webhooks.
 
 ---
 
-## Railway deployment (primary)
+## Web application
 
-Foundly Start is intended to run **fully in Railway + Supabase** (no local DB).
+Hash routes are handled in `ui/src/constants/routes.js`.
 
-- **Deploy**
-  - Railway builds the app (UI + backend) and runs `node src/server.js`.
-  - Ensure your Railway service has the required environment variables below.
+| Area | Route | Notes |
+|------|--------|--------|
+| Dashboard | `#/` | Pipeline stats, quick actions, recent activity |
+| Find Leads | `#/leads` | List filters, company detail `#/company/{number}` |
+| Outreach | `#/outreach` | Optional `?conversation={leadId}` |
+| DB Management | `#/db` | |
+| Profile | `#/profile` | Settings, API keys, Mailgun webhook copy, pipeline logs |
 
-- **Required environment variables**
-  - `DATABASE_URL` (**Supabase Postgres** connection string)
-  - `NODE_ENV=production` (recommended)
-  - `PORT` (Railway sets this; the app defaults to `3001`)
+**Legacy bookmarks** (removed tabs) still resolve:  
+`#/kanban` → Find Leads, `#/analytics` → home, `#/earnings` and `#/logs` → Profile.
 
-- **Recommended / feature-specific variables (or set via Profile UI)**
-  - `SERPER_API_KEY` (website discovery)
-  - `COMPANIES_HOUSE_API_KEY` (Companies House live fetch + cache sync)
-  - `GOOGLE_PLACES_API_KEY` (Google Maps source)
-  - `GOOGLE_AI_API_KEY` (scoring, ice-breakers, drafts)
-  - `APIFY_API_TOKEN` (LinkedIn source via Apify)
-  - Webhooks / email: `BREVO_WEBHOOK_SECRET`, `BREVO_API_KEY`, `MAILGUN_*`
+**Optional admin auth:** If `ADMIN_TOKEN` is set, Profile API endpoints require `Authorization: Bearer <token>`. Other JSON APIs used by the dashboard expect the same token if your client sends it (configure in your hosting / frontend as needed).
 
-Most secrets can also be set from the **Profile** page and are stored in the database (no redeploy needed for changes).
+---
 
-### Mailgun replies (inbound)
+## Railway deployment
 
-If you want **email replies** to appear in **Outreach → Conversations**, configure Mailgun inbound forwarding:
+- **Build:** `npm run build` runs the Vite UI build and copies `ui/dist` into `dist/` for Express static hosting.
+- **Start:** `node src/server.js` (see `package.json` `start`).
+- **Port:** Railway sets `PORT`; the app defaults to `3001` if unset.
 
-- **1. Set Reply-To**
-  - Set `MAILGUN_REPLY_TO` (or Profile key `mailgun_reply_to`) to an address on your Mailgun domain, e.g. `replies@mg.yourdomain.com`.
-  - Foundly Start will set the outbound email header `Reply-To` to that value so replies go to Mailgun (not to a random/non-existent mailbox).
+**Required**
 
-- **2. Create a Mailgun Route**
-  - In Mailgun → `Receiving` → `Routes`, add a Route that matches that address (or your whole Mailgun domain).
-  - Action: `forward()` to `https://YOUR_APP_DOMAIN/api/webhooks/mailgun/inbound` as `POST`.
+- `DATABASE_URL` — PostgreSQL connection string (Supabase pooler URI is recommended for serverless).
 
-- **3. Test**
-  - Send a new outbound email from the app, then click **Reply** in your email client.
-  - The reply should create an inbound message in the thread and set the lead to **Replied**.
+**Recommended**
 
-- **4. Direct inbound emails (no reply headers)**
-  - If a customer sends an email that is NOT a reply (no `In-Reply-To` / `Message-Id` match to a previous outbound message), Foundly Start will try to correlate it by the sender email address to a lead in `leads.emails`.
-  - If a lead match is found, the email will be inserted as an inbound `email_logs` row so it appears in **Outreach → Conversations**.
-  - These messages are labeled as `Direct message` in the thread UI (stored in `email_logs.matched_via = sender_fallback`).
+- `NODE_ENV=production`
+- Feature keys as below or via Profile where supported.
 
-### Main-domain welcome page + contact form
+---
 
-This app serves two UIs based on hostname:
+## Environment variables
 
-- `https://foundlystart.co.uk` (main domain): public **welcome page** with a contact form.
-- `https://dashboard.foundlystart.co.uk` (subdomain): the Foundly Start dashboard (internal UI).
+Copy `.env.example` to `.env` for local use. On Railway, set variables in the service dashboard.
 
-The welcome page contact form submits to:
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | **Required.** Postgres connection string. |
+| `PORT` | Listen port (Railway injects this). |
+| `ADMIN_TOKEN` | If set, secures Profile (and related) API mutations with Bearer token. |
+| `SERPER_API_KEY` | Website discovery via Serper. |
+| `COMPANIES_HOUSE_API_KEY` | CH API + cache sync. |
+| `GOOGLE_AI_API_KEY` | Scoring, ice-breakers, drafts (Gemini). |
+| `GOOGLE_PLACES_API_KEY` | **Pipeline only:** Google Maps / Places source. |
+| `APIFY_API_TOKEN` / `APIFY_LINKEDIN_ACTOR_ID` | **Pipeline only:** LinkedIn enrichment source. |
+| `MAILGUN_API_KEY` | Private API key for sending. |
+| `MAILGUN_DOMAIN` | Verified **sending** domain in Mailgun (e.g. `foundlystart.co.uk` — not necessarily your dashboard hostname). |
+| `MAILGUN_REGION` | `eu` or `us` (must match Mailgun region; wrong value → `401 Unauthorized` from Mailgun). |
+| `MAILGUN_SENDER_EMAIL` / `sender_email` in Profile | From address allowed for that domain. |
+| `MAILGUN_REPLY_TO` / `mailgun_reply_to` | Address Mailgun receives for **inbound** routes (replies). |
+| `MAILGUN_SIGNING_KEY` | Optional webhook signature verification. |
+| `BREVO_API_KEY`, `BREVO_WEBHOOK_SECRET` | If using Brevo for mail or webhooks. |
+| `ALLOWED_ORIGINS` | CORS allowlist for browser clients. |
+| `HUBSPOT_API_KEY`, `PIPEDRIVE_*`, `SALESFORCE_*` | CRM push (see below). |
 
-- `POST /api/welcome/contact`
+---
 
-To make the contact form send email, ensure Mailgun sending is configured (used by `src/services/mailgun.js`):
+## Profile page vs `.env`
 
-- `MAILGUN_API_KEY` and `MAILGUN_DOMAIN`
-- `MAILGUN_SENDER_EMAIL` (or Profile key `sender_email`) so the app knows which address to send from.
+The **Profile** UI in the app stores many keys in the `profile` table and **overrides** `.env` for those keys.
 
-Replies to the visitor are set via the email `Reply-To` header.
+**Editable in Profile (Settings UI)**
 
-### Outreach tracking model (Sent / Opened / Replied / Converted)
+- **API keys (shown in app):** Companies House, Google AI (Gemini), Serper.
+- **Estimated earnings:** Referral value (£) and conversion % — used for dashboard “Est. earnings” (no separate Earnings page).
+- **Pipeline / schedule / outreach / team / webhooks:** As implemented in each section (Mailgun, Brevo, sender, signature, etc.).
 
-Foundly Start tracks outreach performance using **one-time milestone timestamps per lead** (to avoid double-counting when you send multiple emails or have long reply threads).
+**Typically environment-only** (not exposed as Profile form fields in the current UI, but still read by the server from env or DB if previously stored)
 
-- **Starts after Enriched**: milestones are only recorded once a lead has `enriched_at` (i.e. after it first becomes **Enriched**).
-- **One-time per lead**:
-  - **Sent**: the first outbound email sent to the lead → `first_email_sent_at`
-  - **Opened**: the first open event received → `first_email_opened_at`
-  - **Replied**: the first inbound reply received → `first_email_replied_at`
-  - **Converted**: manually toggled in the Company page → `converted_at`
-- **Lists are live membership**: when viewing list analytics, counts are based on **current** list membership (`list_lead`). Removing a lead from a list changes that list’s stats.
+- `GOOGLE_PLACES_API_KEY`, Apify tokens, HubSpot / Pipedrive / Salesforce — configure in **Railway** (or legacy DB keys if you had saved them before). The **company** page can still show **Push to CRM** when the backend resolves credentials from env/DB.
 
-This makes the Dashboard counters stable and prevents “further conversation” from flooding metrics.
+After changing Railway env vars, **redeploy or restart** the service so the process reloads them.
+
+---
+
+## Mailgun (send, inbound replies, open/click tracking)
+
+### Sending
+
+Outbound mail uses `src/services/mailgun.js`. You need a valid **private API key**, **`MAILGUN_DOMAIN`** matching a **verified** Mailgun domain, **`MAILGUN_REGION`** matching EU vs US, and a permitted **From** (`MAILGUN_SENDER_EMAIL` or Profile `sender_email`).
+
+### Domain vs dashboard URL
+
+- **`MAILGUN_DOMAIN`** = the domain Mailgun shows under **Sending → Domains** (e.g. `foundlystart.co.uk`).
+- **Webhook URLs** must use the **public origin of your API** (e.g. `https://dashboard.foundlystart.co.uk`) — that is where Express serves `/api/...`. The dashboard hostname and Mailgun sending domain **do not** have to be the same string.
+
+### Inbound replies (Outreach → Conversations)
+
+1. Set **`MAILGUN_REPLY_TO`** (or Profile `mailgun_reply_to`) to an address Mailgun **receives** (e.g. `replies@mg.yourdomain.com`).
+2. In Mailgun **Receiving → Routes**, forward matching mail to  
+   `POST https://YOUR_API_ORIGIN/api/webhooks/mailgun/inbound`  
+   (e.g. `https://dashboard.foundlystart.co.uk/api/webhooks/mailgun/inbound`).
+
+### Event webhooks (opened, delivered, clicked, …)
+
+To update lead status and milestones from Mailgun events, add a **webhook** in Mailgun (**Sending → Webhooks**) pointing to:
+
+`https://YOUR_API_ORIGIN/api/webhooks/mailgun/events`
+
+Enable at least **Delivered**, **Opened**, and any other events you care about. The server matches events to `email_logs` using Mailgun’s **Message-ID** (including nested `message.headers` in JSON payloads).
+
+**Profile → Email tracking (Mailgun)** shows copyable URLs and optional status (`GET /api/webhooks/mailgun/status`).
+
+---
+
+## Main domain vs dashboard
+
+- **Marketing / welcome site** can be served on the apex domain (e.g. `foundlystart.co.uk`) with a contact form posting to `POST /api/welcome/contact`.
+- **App UI** is often on a subdomain (e.g. `dashboard.foundlystart.co.uk`). The same Node process serves both API and static UI; configure DNS and reverse proxy so both hostnames reach the service.
+
+---
+
+## Outreach milestones
+
+After a lead is **Enriched**, one-time timestamps record: first send, first open, first reply, and manual **Converted** on the company page. List membership is live — analytics for lists reflect **current** list membership.
 
 ---
 
 ## Tech stack
 
-| Layer              | Technology                                                                 |
-|--------------------|----------------------------------------------------------------------------|
-| Runtime            | Node.js                                                                    |
-| Backend            | Express, Socket.IO                                                         |
-| Database           | PostgreSQL (Supabase)                                                      |
-| Browser automation | Playwright (Chromium)                                                      |
-| APIs               | Companies House, Google Places, Serper, Google AI (Gemini)                 |
-| Frontend           | React, Vite (in `ui/`)                                                     |
+| Layer | Technology |
+|-------|------------|
+| Runtime | Node.js |
+| Backend | Express, Socket.IO (logs stream to Profile pipeline UI) |
+| Database | PostgreSQL |
+| Browser automation | Playwright (Chromium) |
+| APIs | Companies House, Google Places, Serper, Google AI (Gemini), Mailgun, optional Brevo |
+| Frontend | React, Vite, TanStack Query (`ui/`) |
 
 ---
 
 ## Project structure
 
 ```
-FoundlyStart/
-├── src/                 # Backend: server, pipeline, routes, services
-├── ui/                  # Frontend: React + Vite (pages, components, api, hooks)
-├── scripts/             # Build and sync (copy-ui-dist, copy-export-html, sync-companies-house)
-├── data/logs/           # Runtime logs (created on first write)
-├── dist/                # Production UI build (after npm run build)
-├── .env.example         # Example environment variables
-├── README.md            # This file
+├── src/                 # Backend: server, routes, services, pipeline
+├── ui/                  # Frontend: React + Vite
+├── scripts/             # copy-ui-dist, copy-export-html, sync-companies-house, …
+├── db/migrations/       # SQL migrations
+├── data/logs/           # Optional file logs if configured
+├── dist/                # Production UI bundle (after npm run build)
+├── .env.example
+└── README.md
 ```
 
 ---
 
-## Local development (optional)
-
-Only needed if you want to run it on your machine against Supabase:
+## Local development
 
 ```bash
 npm install
 npm run dev
 ```
 
----
-
-## Database schema
-
-**Table `leads`:**  
-`id`, `company_name`, `company_number` (unique), `address`, `postcode`, `website`, `emails` (JSON), `phones` (JSON), `contact_form` (0/1), `status`, `score` (1–10), `ice_breaker`, `outreach_draft`, `source`, `created_at`, `updated_at`, plus enrichment/outreach columns.
-
-**Outreach milestone columns (per lead, one-time):**  
-`enriched_at`, `first_email_sent_at`, `first_email_opened_at`, `first_email_replied_at`, `converted_at`.
-
-**Table `profile`:**  
-`key`, `value` — API keys and settings set via the UI, overriding `.env`.
-
-**Table `usage_log`:**  
-API usage per service (tokens, requests, estimated cost).
-
-Schema is defined in `db/migrations/001_init.sql`.
-
-If you already deployed an older schema, apply the follow-up migration:
-
-- `db/migrations/002_lead_milestones.sql`
+Runs the API and the Vite dev server concurrently. Point `DATABASE_URL` at a Postgres instance (e.g. Supabase). See `.env.example`.
 
 ---
 
-## Profile & API key management
+## Database
 
-The **Profile** page (`#/profile`) centralises API keys and usage. Keys are stored in the database and override `.env` without restart.
+Migrations live under `db/migrations/`. Apply them in order on your database (including `001_init.sql`, `002_lead_milestones.sql`, `003_email_logs_matched_via.sql`, and later numbered migrations).
 
-- Enter or update keys in the UI; they are masked after save.
-- **Test** validates each key before saving.
-- Clear a key to fall back to `.env`.
-- **Usage dashboard:** Total requests, tokens (Google AI), estimated cost (GBP), last called — from `usage_log`.
-
-API reference for profile and usage: [docs/API.md](docs/API.md#profile-and-usage).
+Core tables include **`leads`**, **`profile`** (key/value settings), **`email_logs`**, **`usage_log`**, and list membership tables. Schema details are in the SQL files.
 
 ---
 
-## Companies House integration
+## Lead sources & integrations
 
-Companies House REST API fetches newly incorporated UK companies. Pipeline uses Advanced Company Search (e.g. `incorporated_from` 30-day window), maps results to lead shape, then runs Serper → Playwright → AI. Leads get `source = 'companies_house'`.
-
-**Config (env or Profile):** `CH_DAYS_BACK`, `CH_COMPANY_TYPE`, `CH_COMPANY_STATUS`, `CH_SIC_CODE`.  
-**Key:** [developer.company-information.service.gov.uk](https://developer.company-information.service.gov.uk/) — use the REST API key.  
-**Cache:** Use “Find leads” with the local CH cache; sync via Profile or `npm run sync:companies-house`. See [docs/SCRIPTS.md](docs/SCRIPTS.md).
-
----
-
-## Google Maps (Places) source
-
-Pipeline source `google_maps`: search by keyword + location (e.g. "plumbers" in "London"). Google Places API (Text Search) → same enrichment pipeline. Leads: `source = 'google_maps'`, `company_number` = Place ID. Set `GOOGLE_PLACES_API_KEY` and enable Places API in Google Cloud.
-
----
-
-## Lead scoring & outreach draft
-
-- **Scoring:** In Profile, set **Lead scoring criteria** and **Google AI** key. On a lead, use **Score** to get 1–10 and store in `score`.
-- **Draft:** Use **Generate** on a lead to create a cold email with Gemini; stored as `outreach_draft`.
-
-## LinkedIn source (Apify)
-
-Pipeline source `linkedin`: pass company names (CLI). Apify actor (e.g. `harvestapi/linkedin-company`) fetches data → same enrichment. Set `APIFY_API_TOKEN` in .env or Profile; optional `APIFY_LINKEDIN_ACTOR_ID`.
+| Source | Config |
+|--------|--------|
+| **Companies House** | `COMPANIES_HOUSE_API_KEY`; CH filters in pipeline config / UI. Sync CH cache with `npm run sync:companies-house` or Profile tools where available. |
+| **Google Maps** | `GOOGLE_PLACES_API_KEY` (env); Places API enabled in Google Cloud. |
+| **LinkedIn (Apify)** | `APIFY_API_TOKEN` and optional actor id (env). |
+| **JSON file** | Pipeline CLI / run options. |
 
 ---
 
 ## CRM push
 
-Push leads to **HubSpot**, **Pipedrive**, or **Salesforce** from the lead profile or Kanban (bulk). Configure keys in Profile. See README or Profile UI for required scopes and fields (e.g. HubSpot private app token, Pipedrive domain, Salesforce instance URL).
+The UI exposes **Push to CRM** on the company view. Credentials are resolved from **environment** (or existing DB profile keys if present): HubSpot private app token, Pipedrive token + domain, Salesforce token + instance URL — see `.env.example` and `src/services/crmPush.js`.
 
 ---
 
-## Team members & assign lead
+## Team members & assignment
 
-In Profile, set **Team members** (comma-separated). Names appear in the **Assigned** dropdown on leads; `assigned_to` is stored and included in CSV/Excel export.
+Set **Team members** (comma-separated) in Profile. Names appear in assignment UI where implemented; stored per lead for exports.
 
 ---
 
-## Cost per lead
+## Cost and estimated earnings
 
-Profile shows **Cost per lead**: total API spend (`usage_log`), total leads, qualified/converted counts, cost per lead and cost per qualified lead (GBP).
+**Usage** in Profile aggregates `usage_log` (requests, tokens, estimated GBP). **Estimated earnings** on the dashboard uses referral £ and conversion % configured under Profile → **Estimated earnings** (stored as profile keys).
 
 ---
 
 ## Troubleshooting
 
-| Message | Cause | Fix |
-|--------|--------|-----|
-| Google AI API key not set / invalid | No or wrong key | Add Google AI Studio key in **Profile** ([aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)) |
-| Rate limit exceeded | Too many Gemini requests | Wait and retry; smaller batches |
-| Request timed out / Cannot reach Google AI | Network/firewall | Check connection; allow `generativelanguage.googleapis.com` |
-| Gemini model not found | Model name changed | Update app |
-
-Full list and pipeline/Serper/CH errors: [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
-
----
-
-## Resilience
-
-- **Delay:** 3 seconds between companies (`DELAY_BETWEEN_COMPANIES_MS` in config).
-- **Scraper:** Contact/About link fallback (up to 3 links) if homepage has no email.
-- **Keys:** Profile (DB) → `.env` → error; log indicates which key is missing.
-- **Logging:** Set `LOG_LEVEL` (e.g. `debug`) and `LOG_PRETTY=1` for development.
+| Symptom | Likely cause | What to do |
+|---------|----------------|------------|
+| `502` + `{"error":"Unauthorized"}` on send / send-reply | Mailgun rejected the API call | Fix `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, **`MAILGUN_REGION` (eu vs us)**, and sender email. Ensure Profile is not overriding with a bad key. |
+| Replies appear but **Send** fails | Inbound does not use your Mailgun **sending** key; outbound does | Same as above — verify sending credentials on Railway. |
+| Opens in Mailgun logs but lead never **Opened** in app | Webhook URL or event types | Add **Webhooks** → `…/api/webhooks/mailgun/events` with **Opened** (and **Delivered** as needed). Redeploy after server fixes. |
+| Profile save 401 | `ADMIN_TOKEN` set | Send `Authorization: Bearer <ADMIN_TOKEN>` on API requests used by your deployment, or align client config. |
+| Google AI errors | Missing/invalid key | Set `GOOGLE_AI_API_KEY` in Profile or env ([Google AI Studio](https://aistudio.google.com/app/apikey)). |
 
 ---
 
-## License & support
+## Resilience & logging
 
-Foundly Start is provided as-is. For bugs or feature requests, open an issue.
+- Pipeline delay between companies is configurable in code (`DELAY_BETWEEN_COMPANIES_MS` in config).
+- **Logging:** `LOG_LEVEL`, optional `LOG_PRETTY=1`, optional `LOG_FILE`.
+
+---
+
+## License
+
+Foundly Start is provided as-is. For bugs or feature requests, open an issue in the repository.
