@@ -106,7 +106,22 @@ const apiLimiter = rateLimit({
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' },
 });
-app.use('/api/', apiLimiter);
+
+/** Pipeline dashboard polls + Socket-driven refetches; default /api cap is too low. */
+const enrichmentGetLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 600,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' },
+});
+
+app.use('/api/', (req, res, next) => {
+    if (req.method === 'GET' && req.path.startsWith('/enrichment')) {
+        return enrichmentGetLimiter(req, res, next);
+    }
+    return apiLimiter(req, res, next);
+});
 
 app.use(express.json());
 

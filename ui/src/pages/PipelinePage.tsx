@@ -2,7 +2,7 @@
  * Deep enrichment pipeline monitor — stats, job control, live table, logs drawer.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { io, Socket } from 'socket.io-client';
 import { Activity, CheckCircle2, XCircle, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
@@ -96,16 +96,26 @@ export default function PipelinePage() {
   const [stLinkedin, setStLinkedin] = useState(true);
   const [stValidate, setStValidate] = useState(true);
 
+  const pollOpts = {
+    refetchInterval: 12_000,
+    refetchOnWindowFocus: false,
+    retry: (failureCount: number, err: unknown) => {
+      const status = err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : undefined;
+      if (status === 429) return false;
+      return failureCount < 2;
+    },
+  };
+
   const { data: stats, isLoading: statsLoading } = useQuery<EnrichmentStats>({
     queryKey: ['enrichment-stats'],
     queryFn: () => api.get(endpoints.enrichmentStats()),
-    refetchInterval: 3000,
+    ...pollOpts,
   });
 
   const { data: jobsData } = useQuery<{ jobs: JobRow[] }>({
     queryKey: ['enrichment-jobs'],
     queryFn: () => api.get(endpoints.enrichmentJobs()),
-    refetchInterval: 3000,
+    ...pollOpts,
   });
 
   const jobs = jobsData?.jobs ?? [];
@@ -117,7 +127,7 @@ export default function PipelinePage() {
     queryKey: ['enrichment-job-leads', activeJobId],
     queryFn: () => api.get(endpoints.enrichmentJobLeads(activeJobId!)),
     enabled: Boolean(activeJobId),
-    refetchInterval: 3000,
+    ...pollOpts,
   });
 
   const jobLeads = jobLeadsData?.leads ?? [];
@@ -128,9 +138,15 @@ export default function PipelinePage() {
     enabled: drawerLeadId != null,
   });
 
+  const lastSocketRefreshAt = useRef(0);
+  const SOCKET_REFRESH_MIN_MS = 2500;
+
   useEffect(() => {
     const socket: Socket = io(SOCKET_URL, { path: '/socket.io', transports: ['websocket', 'polling'] });
     const onProg = () => {
+      const now = Date.now();
+      if (now - lastSocketRefreshAt.current < SOCKET_REFRESH_MIN_MS) return;
+      lastSocketRefreshAt.current = now;
       queryClient.invalidateQueries({ queryKey: ['enrichment-stats'] });
       queryClient.invalidateQueries({ queryKey: ['enrichment-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['enrichment-job-leads'] });
